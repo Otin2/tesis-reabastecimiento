@@ -40,6 +40,25 @@
 | **Los commits van a nombre del autor, sin `Co-Authored-By` ni mención de Claude.** | Pedido explícito del autor. |
 | **Frontend en JavaScript (no TypeScript)**, textos de la interfaz en español. | Decisión tomada al empezar. |
 
+### Una sola base de datos, varias cuentas (multiempresa)
+
+La base ("Tesis_Reabastecimiento" en Supabase) es **multiempresa**: cada cuenta de usuario pertenece a un restaurante (`perfiles.restaurante_id`) y solo ve los datos de ese restaurante (RLS). Así dos cuentas ven datos distintos con la misma app y la misma base:
+
+| Cuenta | Restaurante | Datos |
+|---|---|---|
+| **Demo** (clases, amigos) | "Restaurante Demo" | **Inventados**, cargados con `supabase/seed_demo.sql` (8 semanas de ventas, compras, mermas, gastos...). |
+| **Real** (la hermana) | el suyo | **Vacío**: ella lo va llenando poco a poco con sus datos reales (insumos, recetas, ventas). |
+
+Reglas:
+- `seed_demo.sql` **solo** crea el "Restaurante Demo"; no toca ningún otro restaurante. Nunca se carga en la cuenta real.
+- El restaurante de la hermana y su usuario se crean aparte (usuario en Supabase Auth + fila en `perfiles`). Se llena desde la propia app (Insumos, Menú y recetas, Vender...) o importando el CSV de insumos.
+- Las cuentas se crean en Supabase → Authentication → Users → Add user, y luego se vinculan con un `insert` en `perfiles` (ver el final de `seed_demo.sql`).
+- El frontend con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` usa la base real; **sin** esas variables funciona en modo demo con datos de `mock.js` (sin base de datos). Ambos modos usan el mismo código.
+- Para desplegar el frontend en Vercel: importar el repositorio, **Root Directory = `frontend`**, framework Vite. `frontend/vercel.json` hace que rutas como `/ganancias` funcionen al recargar.
+- Nota para la API: la vista `gastos_por_dia` reparte un gasto mensual entre **todos** los días del mes (incluidos los futuros). Al sumar un periodo hay que filtrar entre dos fechas (`dia > inicio and dia <= fin`).
+
+**Pendiente (decisión de arquitectura):** para que la app use la base de datos hoy hay que tener una capa que lea y escriba. Opciones: (a) funciones SQL (RPC) + `supabase-js` desde el frontend, sin servidor Python, y dejar FastAPI solo para el motor y el agente con Gemini; (b) FastAPI para todo, como dice el PLAN.
+
 ### Decisiones de producto tomadas durante el desarrollo
 
 - **Se eliminó la pantalla "Pedido sugerido"** del plan. Razón: la app no "manda a comprar". Se reemplazó por una **lista de compras** que se puede editar, tachar, descargar en PDF y compartir.
@@ -161,7 +180,7 @@ Notas:
 ### 8.1 Base de datos (Supabase)
 - [x] Crear el proyecto de Supabase ("Tesis_Reabastecimiento").
 - [x] Aplicar el esquema (`0001` y `0002`) sin errores.
-- [ ] Crear `seed.sql` con el restaurante de ejemplo del PLAN (6 platos, 11+ insumos, recetas, stock inicial con varios insumos bajo el punto de reorden). Fácil de reemplazar con las recetas reales.
+- [x] Seed de la cuenta demo (`supabase/seed_demo.sql`, ya cargado en la base): 6 platos, 13 insumos, recetas, ~770 ventas en 8 semanas, compras, mermas, gastos y una nota. Varios insumos quedan bajo su punto de aviso y dos por vencer.
 - [ ] **Segundo restaurante** en el seed para probar que un usuario nunca ve datos de otro.
 - [x] Tests SQL (`supabase/tests/prueba_esquema.sql`): margen del lomo, venta, anular, compra, vencimiento, mermas, gastos, aislamiento. Falta convertirlos al seed definitivo y agregar casos del segundo restaurante.
 - [ ] Crear usuario en Supabase Auth con su fila en `perfiles`.
