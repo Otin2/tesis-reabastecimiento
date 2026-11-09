@@ -18,6 +18,13 @@ const insumos = [
   { id: 5, nombre: 'Carne de res', unidad: 'g', stock: 12000, punto_reorden: 8000, presentacion_compra: 1000, costo_unitario: 0.035, uso_semanal: 9000 },
   { id: 6, nombre: 'Arroz', unidad: 'g', stock: 40000, punto_reorden: 15000, presentacion_compra: 50000, costo_unitario: 0.0045, uso_semanal: 18000 },
   { id: 7, nombre: 'Aceite', unidad: 'ml', stock: 9000, punto_reorden: 3000, presentacion_compra: 1000, costo_unitario: 0.009, uso_semanal: 3500 },
+  { id: 8, nombre: 'Tomate', unidad: 'g', stock: 6000, punto_reorden: 3000, presentacion_compra: 1000, costo_unitario: 0.004, uso_semanal: 4000 },
+  { id: 9, nombre: 'Pescado', unidad: 'g', stock: 5000, punto_reorden: 3000, presentacion_compra: 1000, costo_unitario: 0.03, uso_semanal: 6000 },
+  { id: 10, nombre: 'Limón', unidad: 'g', stock: 3000, punto_reorden: 1500, presentacion_compra: 1000, costo_unitario: 0.006, uso_semanal: 2000 },
+  { id: 11, nombre: 'Maíz morado', unidad: 'g', stock: 2500, punto_reorden: 1000, presentacion_compra: 1000, costo_unitario: 0.008, uso_semanal: 1500 },
+  // Uso general: no entran en recetas, no descuentan stock ni generan alertas.
+  { id: 12, nombre: 'Servilletas', unidad: 'unid', en_recetas: false, stock: null, presentacion_compra: 100, costo_unitario: 0.03 },
+  { id: 13, nombre: 'Bolsas para llevar', unidad: 'unid', en_recetas: false, stock: null, presentacion_compra: 50, costo_unitario: 0.1 },
 ]
 
 const ventasHoy = { platos: 18, total: 342 }
@@ -31,7 +38,7 @@ function nivel(i) {
 
 function porAgotarse() {
   return insumos
-    .filter((i) => nivel(i))
+    .filter((i) => i.en_recetas !== false && nivel(i))
     .map((i) => ({ ...i, nivel: nivel(i) }))
     .sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === 'Crítico' ? -1 : 1))
 }
@@ -54,6 +61,30 @@ const recetas = {
 const vendidosSemana = { 1: 70, 2: 48, 3: 35, 4: 30, 5: 26, 6: 40 }
 const pesoDia = [0.1, 0.11, 0.12, 0.13, 0.17, 0.2, 0.17]
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+// Gastos mensuales de ejemplo. En una semana cuenta 7/30 de cada uno (se reparten por día).
+const gastosMensuales = [
+  ['Servicios', 'Luz', 180],
+  ['Servicios', 'Agua', 90],
+  ['Servicios', 'Internet', 80],
+  ['Servicios', 'Gas', 120],
+  ['Sueldos', 'Cocinera', 1300],
+  ['Sueldos', 'Mozo', 1100],
+  ['Alquiler', 'Alquiler del local', 1200],
+]
+
+function costosSemana(costoInsumos) {
+  return [
+    { id: 'insumos', grupo: 'Insumos', nombre: 'Insumos de lo vendido', monto: costoInsumos },
+    { id: 'mermas', grupo: 'Insumos', nombre: 'Mermas y uso propio', monto: 24.5 },
+    ...gastosMensuales.map(([grupo, nombre, mensual]) => ({
+      id: nombre,
+      grupo,
+      nombre,
+      monto: +((mensual * 7) / 30).toFixed(2),
+    })),
+  ]
+}
 
 function calcularGanancias() {
   const filas = platos.map((p) => {
@@ -89,6 +120,7 @@ function calcularGanancias() {
       costo: +(ventas - ganancia).toFixed(2),
       ganancia: +ganancia.toFixed(2),
       margen_pct: +((ganancia / ventas) * 100).toFixed(1),
+      costos: costosSemana(+(ventas - ganancia).toFixed(2)),
       dias: DIAS.map((dia, i) => ({ dia, ganancia: +(ganancia * pesoDia[i]).toFixed(2) })),
     },
   }
@@ -138,6 +170,29 @@ export const mock = {
       costo_total: +lineas.reduce((s, l) => s + l.costo_estimado, 0).toFixed(2),
     }
   },
+  async insumos() {
+    await pausa(100)
+    return insumos.map(({ id, nombre, unidad, presentacion_compra, costo_unitario, en_recetas }) => ({
+      id, nombre, unidad, presentacion_compra, costo_unitario, en_recetas: en_recetas !== false,
+    }))
+  },
+  async crearInsumo(d) {
+    await pausa(200)
+    const nuevo = {
+      id: Math.max(...insumos.map((i) => i.id)) + 1,
+      nombre: d.nombre,
+      unidad: d.unidad,
+      en_recetas: d.en_recetas,
+      stock: d.en_recetas ? d.stock : null,
+      punto_reorden: d.en_recetas ? d.punto_reorden : undefined,
+      presentacion_compra: d.presentacion_compra,
+      costo_unitario: d.costo_unitario,
+      uso_semanal: 0,
+    }
+    insumos.push(nuevo)
+    const { id, nombre, unidad, presentacion_compra, costo_unitario, en_recetas } = nuevo
+    return { id, nombre, unidad, presentacion_compra, costo_unitario, en_recetas: en_recetas !== false }
+  },
   async registrarEvento() {
     return { ok: true }
   },
@@ -149,7 +204,7 @@ export const mock = {
     await pausa(700)
     const t = texto.toLowerCase()
     const enKg = (i) => (i.unidad === 'unid' ? `${i.stock} unid` : `${(i.stock / 1000).toLocaleString('es-PE')} ${i.unidad === 'g' ? 'kg' : 'L'}`)
-    const insumo = insumos.find((i) => t.includes(i.nombre.toLowerCase().split(' ')[0]))
+    const insumo = insumos.filter((i) => i.en_recetas !== false).find((i) => t.includes(i.nombre.toLowerCase().split(' ')[0]))
     if (insumo && /(cu[aá]nto|queda|stock|hay)/.test(t)) {
       return {
         respuesta: `Quedan ${enKg(insumo)} de ${insumo.nombre.toLowerCase()}.`,

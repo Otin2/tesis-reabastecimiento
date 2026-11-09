@@ -225,3 +225,34 @@ h2 { font-size: 17px; font-weight: 600; }
 .switch:focus-visible { box-shadow: 0 0 0 3px var(--primary-light); }
 .icon-btn { background: none; border: none; color: var(--muted); width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; margin: -6px -8px 0 0; }
 .icon-btn svg { width: 24px; height: 24px; }
+
+/* Buscador de insumos */
+.opciones { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.opcion { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; background: var(--surface); border: none; border-top: 1px solid var(--border); padding: 12px 14px; min-height: 48px; }
+.opcion:first-child { border-top: none; }
+.opcion:disabled { color: var(--muted); cursor: not-allowed; }
+.opcion.crear { color: var(--primary-ink); font-weight: 600; }
+.segmentos.dos { grid-template-columns: 1fr 1fr; }
+.campo-par { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nota { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+
+/* Ganancia neta interactiva */
+.neto-num { font-size: 40px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0; color: var(--primary-ink); font-variant-numeric: tabular-nums; }
+.neto-num.neg { color: var(--danger); }
+.barra { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--bg); margin-top: 14px; }
+.barra i { display: block; height: 100%; transition: width .25s ease; }
+.costos { padding: 8px 16px 16px; }
+.costo-grupo { margin-top: 8px; }
+.costo-titulo { padding: 8px 0 2px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+.costo-fila { display: flex; align-items: center; gap: 10px; min-height: 48px; position: relative; cursor: pointer; border-top: 1px solid var(--border); }
+.costo-fila.total { cursor: default; font-size: 16px; border-top: none; }
+.costo-fila input { position: absolute; opacity: 0; width: 26px; height: 26px; margin: 0; left: 0; }
+.costo-fila .caja { flex: none; width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--border); background: var(--surface); display: grid; place-items: center; }
+.costo-fila input:checked + .caja { background: var(--primary); border-color: var(--primary); }
+.costo-fila input:checked + .caja::after { content: ''; width: 6px; height: 12px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+.costo-fila input:focus-visible + .caja { box-shadow: 0 0 0 3px var(--primary-light); border-color: var(--primary); }
+.costo-fila .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.costo-nombre { flex: 1; }
+.costo-fila b { font-variant-numeric: tabular-nums; }
+.costo-fila.off .costo-nombre, .costo-fila.off b { color: var(--muted); text-decoration: line-through; }
+.costo-fila.off .dot { opacity: .3; }

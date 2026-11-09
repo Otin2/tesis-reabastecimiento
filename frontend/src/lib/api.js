@@ -20,6 +20,9 @@ export const api = {
   platos: () => (DEMO ? mock.platos() : request('/platos')),
   guardarVenta: (venta) => (DEMO ? mock.guardarVenta(venta) : request('/ventas', { method: 'POST', body: venta })),
   resumen: () => (DEMO ? mock.resumen() : request('/resumen')),
+  // Catálogo completo de insumos (para el buscador) y alta de uno nuevo.
+  insumos: () => (DEMO ? mock.insumos() : request('/insumos')),
+  crearInsumo: (d) => (DEMO ? mock.crearInsumo(d) : request('/insumos', { method: 'POST', body: d })),
   listaCompras: () => (DEMO ? mock.listaCompras() : request('/lista-compras')),
   // tipo: 'generada' | 'pdf' | 'compartida' | 'marcada'. Sirve como evidencia del piloto.
   registrarEvento: (tipo, detalle = {}) =>
