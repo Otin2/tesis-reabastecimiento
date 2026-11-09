@@ -28,12 +28,13 @@ export const Icons = {
   menu: icon(<><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z" /></>),
   insumos: icon(<><path d="M21 8l-9-5-9 5v8l9 5 9-5z" /><path d="M3 8l9 5 9-5" /><path d="M12 13v8" /></>),
   ventas: icon(<><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z" /><path d="M9 8h6" /><path d="M9 12h6" /></>),
+  gastos: icon(<><circle cx="12" cy="12" r="9" /><path d="M14.5 9a2.5 2.5 0 00-2.5-1.5c-1.4 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2A2.5 2.5 0 019.5 15" /><path d="M12 6v1.5M12 16.5V18" /></>),
   enviar: icon(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></>),
   logo: icon(<><path d="M21 8l-9-5-9 5v8l9 5 9-5z" /><path d="M3 8l9 5 9-5" /><path d="M12 13v8" /></>),
 }
 
 // "Más" queda resaltada en todas las pantallas que cuelgan de ella.
-const RUTAS_MAS = ['/mas', '/menu', '/insumos', '/ventas', '/ajustes']
+const RUTAS_MAS = ['/mas', '/menu', '/insumos', '/ventas', '/gastos', '/ajustes']
 
 export function BottomNav() {
   const { pathname } = useLocation()

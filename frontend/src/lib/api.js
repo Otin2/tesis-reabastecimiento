@@ -42,8 +42,18 @@ export const api = {
   registrarEvento: (tipo, detalle = {}) =>
     (DEMO ? mock.registrarEvento() : post('/lista-compras/eventos', { tipo, ...detalle })).catch(() => {}),
 
-  ganancias: () => (DEMO ? mock.ganancias() : request('/ganancias')),
+  // periodo: 'semana' | 'semana_pasada' | 'semana_antepasada' | 'mes'
+  ganancias: (periodo = 'semana') => (DEMO ? mock.ganancias(periodo) : request(`/ganancias?periodo=${periodo}`)),
+
+  // Gastos (servicios, sueldos, alquiler...). fijo = se paga cada mes.
+  gastos: () => (DEMO ? mock.gastos() : request('/gastos')),
+  crearGasto: (g) => (DEMO ? mock.crearGasto(g) : post('/gastos', g)),
+  actualizarGasto: (g) => (DEMO ? mock.actualizarGasto(g) : request(`/gastos/${g.id}`, { method: 'PUT', body: g })),
+  quitarGasto: (id) => (DEMO ? mock.quitarGasto(id) : request(`/gastos/${id}`, { method: 'DELETE' })),
+  // El agente propone una acción (accion = { id, tipo, resumen }); solo se ejecuta al confirmarla.
   chat: (texto) => (DEMO ? mock.chat(texto) : post('/chat', { texto })),
+  confirmarAccion: (id) => (DEMO ? mock.confirmarAccion(id) : post(`/chat/acciones/${id}/confirmar`, {})),
+  cancelarAccion: (id) => (DEMO ? mock.cancelarAccion(id) : post(`/chat/acciones/${id}/cancelar`, {})),
 }
 
 // Todo se guarda en unidad base; aquí solo se muestra en kg / L.

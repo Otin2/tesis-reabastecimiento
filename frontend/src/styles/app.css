@@ -286,3 +286,21 @@ h2 { font-size: 17px; font-weight: 600; }
 .venta.anulada .pg-head { text-decoration: line-through; }
 .cobro { display: flex; flex-direction: column; gap: 10px; }
 .compra-form { display: flex; flex-direction: column; gap: 10px; }
+
+/* Reportes y gastos */
+.delta { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; }
+.delta.sube { color: var(--primary-ink); }
+.delta.baja { color: var(--danger); }
+.segmentos.cuatro { grid-template-columns: repeat(4, 1fr); }
+.segmentos.cuatro button { font-size: 13px; padding: 10px 0; }
+.gasto-fila { display: flex; align-items: center; gap: 8px; min-height: 52px; border-top: 1px solid var(--border); }
+.gasto-fila:first-of-type { border-top: none; }
+.gasto-fila .input { width: 96px; padding: 10px; text-align: right; }
+.costo-titulo { padding: 8px 0 2px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+
+/* Tarjeta de confirmación dentro del chat */
+.accion { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--primary-light); display: flex; flex-direction: column; align-items: flex-start; }
+.accion-resumen { font-weight: 600; color: var(--text); }
+.accion .actions { align-self: stretch; }
+.bubble.bot { max-width: 88%; }
+.costo-fila.total { justify-content: space-between; }

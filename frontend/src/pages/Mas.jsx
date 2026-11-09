@@ -3,6 +3,7 @@ import { Icons } from '../components/ui'
 
 const ENLACES = [
   ['/ventas', Icons.ventas, 'Ventas de hoy', 'Ver, anular y cierre de caja'],
+  ['/gastos', Icons.gastos, 'Gastos', 'Servicios, sueldos y alquiler para la ganancia neta'],
   ['/menu', Icons.menu, 'Menú y recetas', 'Crear platos, editar recetas y activar los del día'],
   ['/insumos', Icons.insumos, 'Insumos y stock', 'Contar stock, mermas, uso propio e importar'],
   ['/ajustes', Icons.ajustes, 'Ajustes', 'Tema, cuenta y datos'],

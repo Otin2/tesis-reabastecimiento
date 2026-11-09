@@ -159,63 +159,179 @@ const vendidosSemana = { 1: 70, 2: 48, 3: 35, 4: 30, 5: 26, 6: 40 }
 const pesoDia = [0.1, 0.11, 0.12, 0.13, 0.17, 0.2, 0.17]
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-// Gastos mensuales de ejemplo. En una semana cuenta 7/30 de cada uno (se reparten por día).
-const gastosMensuales = [
-  ['Servicios', 'Luz', 180],
-  ['Servicios', 'Agua', 90],
-  ['Servicios', 'Internet', 80],
-  ['Servicios', 'Gas', 120],
-  ['Sueldos', 'Cocinera', 1300],
-  ['Sueldos', 'Mozo', 1100],
-  ['Alquiler', 'Alquiler del local', 1200],
+// Gastos de ejemplo. Los fijos se pagan cada mes: en un periodo cuenta la parte que le toca (días/30).
+// Los de "solo esta vez" cuentan completos en el periodo actual.
+let sigGasto = 100
+let gastos = [
+  { id: 1, nombre: 'Luz', categoria: 'servicios', monto: 180, fijo: true },
+  { id: 2, nombre: 'Agua', categoria: 'servicios', monto: 90, fijo: true },
+  { id: 3, nombre: 'Internet', categoria: 'servicios', monto: 80, fijo: true },
+  { id: 4, nombre: 'Gas', categoria: 'servicios', monto: 120, fijo: true },
+  { id: 5, nombre: 'Cocinera', categoria: 'sueldos', monto: 1300, fijo: true },
+  { id: 6, nombre: 'Mozo', categoria: 'sueldos', monto: 1100, fijo: true },
+  { id: 7, nombre: 'Alquiler del local', categoria: 'alquiler', monto: 1200, fijo: true },
 ]
+const GRUPO_GASTO = { alquiler: 'Alquiler', servicios: 'Servicios', sueldos: 'Sueldos', otros: 'Otros' }
 
-function costosSemana(costoInsumos) {
+// f = cuánto se vendió respecto a la semana de referencia. Es solo para que el demo tenga historia.
+const PERIODOS = {
+  semana: { f: 1, dias: 7, anterior: 0.92, actual: true, etiqueta: 'esta semana', previo: 'la semana pasada', barras: 'Por día' },
+  semana_pasada: { f: 0.92, dias: 7, anterior: 0.85, actual: false, etiqueta: 'la semana pasada', previo: 'la semana anterior', barras: 'Por día' },
+  semana_antepasada: { f: 0.85, dias: 7, anterior: 0.78, actual: false, etiqueta: 'la semana antepasada', previo: 'la semana anterior', barras: 'Por día' },
+  mes: { f: 4.1, dias: 30, anterior: 3.8, actual: true, etiqueta: 'este mes', previo: 'el mes pasado', barras: 'Por semana' },
+}
+
+function costosPeriodo(costoInsumos, p, factor) {
   return [
-    { id: 'insumos', grupo: 'Insumos', nombre: 'Insumos de lo vendido', monto: costoInsumos },
-    { id: 'mermas', grupo: 'Insumos', nombre: 'Mermas y uso propio', monto: +perdidas.toFixed(2) },
-    ...gastosMensuales.map(([grupo, nombre, mensual]) => ({
-      id: nombre,
-      grupo,
-      nombre,
-      monto: +((mensual * 7) / 30).toFixed(2),
-    })),
+    { id: 'insumos', grupo: 'Insumos', nombre: 'Insumos de lo vendido', monto: +costoInsumos.toFixed(2) },
+    { id: 'mermas', grupo: 'Insumos', nombre: 'Mermas y uso propio', monto: +(perdidas * factor).toFixed(2) },
+    ...gastos
+      .filter((g) => g.fijo || p.actual)
+      .map((g) => ({
+        id: `g${g.id}`,
+        grupo: GRUPO_GASTO[g.categoria],
+        nombre: g.nombre,
+        monto: g.fijo ? +((g.monto * p.dias) / 30).toFixed(2) : g.monto,
+      })),
   ]
 }
 
-function calcularGanancias() {
-  const filas = platos.map((p) => {
-    const receta = detalleReceta(p.id)
-    const costo = costoPlato(p.id)
-    const ganancia = p.precio - costo
-    const vendidos = vendidosSemana[p.id] ?? 0
+function calc(factor, p) {
+  const filas = platos.map((pl) => {
+    const receta = detalleReceta(pl.id)
+    const costo = costoPlato(pl.id)
+    const ganancia = pl.precio - costo
+    const vendidos = Math.round((vendidosSemana[pl.id] ?? 0) * factor)
     return {
-      id: p.id,
-      nombre: p.nombre,
-      precio: p.precio,
+      id: pl.id,
+      nombre: pl.nombre,
+      precio: pl.precio,
       costo: +costo.toFixed(2),
       ganancia: +ganancia.toFixed(2),
-      margen_pct: p.precio > 0 ? +((ganancia / p.precio) * 100).toFixed(1) : 0,
+      margen_pct: pl.precio > 0 ? +((ganancia / pl.precio) * 100).toFixed(1) : 0,
       vendidos,
-      ventas_total: +(p.precio * vendidos).toFixed(2),
+      ventas_total: +(pl.precio * vendidos).toFixed(2),
       ganancia_total: +(ganancia * vendidos).toFixed(2),
       receta,
     }
   })
   const ventas = filas.reduce((s, f) => s + f.ventas_total, 0)
-  const ganancia = filas.reduce((s, f) => s + f.ganancia_total, 0)
+  const bruta = filas.reduce((s, f) => s + f.ganancia_total, 0)
+  const costos = costosPeriodo(ventas - bruta, p, factor)
+  return { filas, ventas, bruta, costos, neta: ventas - costos.reduce((s, c) => s + c.monto, 0) }
+}
+
+function calcularGanancias(periodo = 'semana') {
+  const p = PERIODOS[periodo] ?? PERIODOS.semana
+  const act = calc(p.f, p)
+  const ant = calc(p.anterior, { ...p, actual: false })
+  const pesos = p.dias === 30 ? [0.22, 0.25, 0.27, 0.26] : pesoDia
+  const etiquetas = p.dias === 30 ? ['S1', 'S2', 'S3', 'S4'] : DIAS
   return {
-    platos: filas.sort((a, b) => b.margen_pct - a.margen_pct),
-    semana: {
-      ventas: +ventas.toFixed(2),
-      costo: +(ventas - ganancia).toFixed(2),
-      ganancia: +ganancia.toFixed(2),
-      margen_pct: ventas > 0 ? +((ganancia / ventas) * 100).toFixed(1) : 0,
-      costos: costosSemana(+(ventas - ganancia).toFixed(2)),
-      dias: DIAS.map((dia, i) => ({ dia, ganancia: +(ganancia * pesoDia[i]).toFixed(2) })),
+    platos: act.filas.sort((a, b) => b.margen_pct - a.margen_pct),
+    resumen: {
+      etiqueta: p.etiqueta,
+      previo: p.previo,
+      dias: p.dias,
+      barras_titulo: p.barras,
+      ventas: +act.ventas.toFixed(2),
+      costo: +(act.ventas - act.bruta).toFixed(2),
+      ganancia: +act.bruta.toFixed(2),
+      margen_pct: act.ventas > 0 ? +((act.bruta / act.ventas) * 100).toFixed(1) : 0,
+      costos: act.costos,
+      barras: etiquetas.map((etiqueta, i) => ({ etiqueta, ganancia: +(act.bruta * pesos[i]).toFixed(2) })),
+      anterior: { ventas: +ant.ventas.toFixed(2), neta: +ant.neta.toFixed(2) },
     },
   }
 }
+
+// ---------- Agente: interpreta frases y PROPONE acciones (nada se guarda sin confirmar) ----------
+
+const norm = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const NUMS = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 }
+const ER_NUM = `\\d+|${Object.keys(NUMS).join('|')}`
+const aNumero = (x) => (NUMS[x] ?? parseFloat(String(x).replace(',', '.')))
+const UNID = { kg: ['g', 1000], kilo: ['g', 1000], kilos: ['g', 1000], g: ['g', 1], gramos: ['g', 1], l: ['ml', 1000], litro: ['ml', 1000], litros: ['ml', 1000] }
+
+const acciones = new Map()
+const notas = []
+let sigAccion = 1
+
+function nueva(tipo, resumen, payload) {
+  const id = `acc-${sigAccion++}`
+  acciones.set(id, { tipo, payload })
+  return { id, tipo, resumen }
+}
+
+// Busca "<cantidad> <unidad> de <insumo>" en la frase.
+function cantidadInsumo(t) {
+  const m = t.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilos?|gramos?|g|litros?|l)\b/)
+  const i = insumos.find((x) => x.en_recetas !== false && t.includes(norm(x.nombre).split(' ')[0]))
+  if (!m || !i) return null
+  const [base, factor] = UNID[m[2]]
+  if (base !== i.unidad) return null
+  const n = parseFloat(m[1].replace(',', '.'))
+  return { insumo: i, base: n * factor, texto: `${m[1]} ${m[2]} de ${i.nombre.toLowerCase()}` }
+}
+
+function proponer(texto) {
+  const t = norm(texto)
+
+  // Venta: "vendí 3 lomos y 2 ceviches"
+  if (/vend[io]|vendieron|vendimos/.test(t)) {
+    const items = []
+    platos.forEach((p) => {
+      const clave = norm(p.nombre).split(' ')[0]
+      const m = t.match(new RegExp(`(${ER_NUM})\\s+(?:de\\s+)?${clave}`))
+      if (m) items.push({ plato_id: p.id, cantidad: aNumero(m[1]), nombre: p.nombre, precio: p.precio })
+    })
+    if (items.length) {
+      const total = items.reduce((s, it) => s + it.cantidad * it.precio, 0)
+      const resumen = `${items.map((it) => `${it.cantidad} × ${it.nombre}`).join(', ')} · S/ ${total.toFixed(2)}`
+      return { accion: nueva('venta', `Venta: ${resumen}`, { items: items.map(({ plato_id, cantidad }) => ({ plato_id, cantidad })) }) }
+    }
+  }
+
+  // Compra: "compré 5 kg de pollo a 11 soles el kilo" / "por 55 soles"
+  if (/compre|compramos/.test(t)) {
+    const c = cantidadInsumo(t)
+    if (c) {
+      const pr = t.match(/\b(a|por)\s+(?:s\/\s*)?(\d+(?:[.,]\d+)?)/)
+      if (!pr) return { pregunta: '¿Cuánto pagaste por eso? Dímelo así: "a 11 soles el kilo" o "por 55 soles".' }
+      const precio = parseFloat(pr[2].replace(',', '.'))
+      const total = pr[1] === 'a' ? precio * (c.base / vista_(c.insumo)) : precio
+      return {
+        accion: nueva('compra', `Compra: ${c.texto} · S/ ${total.toFixed(2)}`, {
+          lineas: [{ insumo_id: c.insumo.id, cantidad: c.base, costo_total: +total.toFixed(2) }],
+        }),
+      }
+    }
+  }
+
+  // Merma o uso propio: "se malogró 1 kilo de pescado" / "usamos 2 kg de pollo para el personal"
+  const propio = /personal|propio|comimos|almuerzo del/.test(t)
+  if (propio || /malog|bote|perdi|se cayo|vencio|desech|se echo/.test(t)) {
+    const c = cantidadInsumo(t)
+    if (c) {
+      const tipo = propio ? 'consumo_propio' : 'merma'
+      return {
+        accion: nueva(tipo, `${propio ? 'Uso propio' : 'Merma'}: ${c.texto}`, {
+          insumo_id: c.insumo.id, tipo, cantidad: c.base, motivo: texto,
+        }),
+      }
+    }
+  }
+
+  // Nota del negocio: contexto que el motor no puede saber.
+  if (/^nota\b/.test(t) || /cumpleanos|feriado|evento|fiesta|reserva|no entrega|no llega|no vendra/.test(t)) {
+    const limpio = texto.replace(/^nota\s*[:\-]?\s*/i, '').trim()
+    return { accion: nueva('nota', `Nota: ${limpio}`, { texto: limpio }) }
+  }
+  return null
+}
+
+// kg o L por unidad "grande" del insumo (para precios "a X el kilo").
+const vista_ = (i) => (i.unidad === 'unid' ? 1 : 1000)
 
 // ---------- API de ejemplo ----------
 
@@ -386,16 +502,76 @@ export const mock = {
     return { ok: true }
   },
 
-  async ganancias() {
+  async ganancias(periodo) {
     await pausa(200)
-    return calcularGanancias()
+    return calcularGanancias(periodo)
   },
 
+  // Gastos
+  async gastos() {
+    await pausa(100)
+    return gastos.map((g) => ({ ...g }))
+  },
+  async crearGasto(d) {
+    await pausa(150)
+    gastos.push({ id: sigGasto++, nombre: d.nombre, categoria: d.categoria, monto: d.monto, fijo: d.fijo })
+    return { ok: true }
+  },
+  async actualizarGasto(d) {
+    await pausa(100)
+    gastos = gastos.map((g) => (g.id === d.id ? { ...g, monto: d.monto } : g))
+    return { ok: true }
+  },
+  async quitarGasto(id) {
+    await pausa(100)
+    gastos = gastos.filter((g) => g.id !== id)
+    return { ok: true }
+  },
+
+  async confirmarAccion(id) {
+    await pausa(300)
+    const a = acciones.get(id)
+    if (!a) return { ok: false, mensaje: 'Esa acción ya no está disponible.' }
+    acciones.delete(id)
+    const { tipo, payload } = a
+    if (tipo === 'venta') {
+      const r = await mock.guardarVenta({ items: payload.items })
+      return { ok: true, mensaje: `Venta registrada ✓ Total S/ ${r.total.toFixed(2)}.` }
+    }
+    if (tipo === 'compra') {
+      await mock.registrarCompra({ lineas: payload.lineas })
+      return { ok: true, mensaje: 'Compra registrada ✓ El stock y el costo se actualizaron.' }
+    }
+    if (tipo === 'merma' || tipo === 'consumo_propio') {
+      await mock.ajustarStock({ insumo_id: payload.insumo_id, tipo: payload.tipo, cantidad: payload.cantidad, motivo: payload.motivo })
+      return { ok: true, mensaje: 'Anotado ✓ El stock bajó.' }
+    }
+    if (tipo === 'nota') {
+      notas.push(payload.texto)
+      return { ok: true, mensaje: 'Anotado ✓ Lo tendré en cuenta en las recomendaciones.' }
+    }
+    return { ok: false, mensaje: 'No sé cómo guardar eso.' }
+  },
+  async cancelarAccion(id) {
+    acciones.delete(id)
+    return { ok: true }
+  },
   async chat(texto) {
     await pausa(700)
     const t = texto.toLowerCase()
+    const prop = proponer(texto)
+    if (prop?.pregunta) return { respuesta: prop.pregunta, funcion_usada: 'pedir_dato' }
+    if (prop?.accion) return { respuesta: 'Entendí esto. ¿Lo guardo?', funcion_usada: `proponer_${prop.accion.tipo}`, accion: prop.accion }
+
     const enKg = (i) => (i.unidad === 'unid' ? `${i.stock} unid` : `${(i.stock / 1000).toLocaleString('es-PE')} ${i.unidad === 'g' ? 'kg' : 'L'}`)
     const insumo = insumos.filter((i) => i.en_recetas !== false).find((i) => t.includes(i.nombre.toLowerCase().split(' ')[0]))
+    if (insumo && /(por qu[eé]|porque|explica)/.test(t) && /(compr|sugier|recomiend|lista)/.test(t)) {
+      const diario = (insumo.uso_semanal ?? 0) / 7
+      return {
+        respuesta: `De ${insumo.nombre.toLowerCase()} quedan ${enKg(insumo)} y se usan unos ${(diario / 1000).toLocaleString('es-PE', { maximumFractionDigits: 1 })} ${insumo.unidad === 'g' ? 'kg' : 'L'} al día, así que alcanza ${diasRestantes(insumo)} días. Tu aviso está en ${(insumo.punto_reorden / 1000).toLocaleString('es-PE')} ${insumo.unidad === 'g' ? 'kg' : 'L'}, por eso te lo sugiero.`,
+        funcion_usada: 'explicar_compra',
+      }
+    }
     if (insumo && /(cu[aá]nto|queda|stock|hay)/.test(t)) {
       return {
         respuesta: `Quedan ${enKg(insumo)} de ${insumo.nombre.toLowerCase()}.`,

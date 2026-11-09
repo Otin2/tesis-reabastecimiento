@@ -14,6 +14,7 @@ import Menu from './pages/Menu'
 import MenuEditor from './pages/MenuEditor'
 import Insumos from './pages/Insumos'
 import VentasHoy from './pages/VentasHoy'
+import Gastos from './pages/Gastos'
 
 export default function App() {
   const { user, cargando } = useAuth()
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/menu/:id" element={<MenuEditor />} />
         <Route path="/insumos" element={<Insumos />} />
         <Route path="/ventas" element={<VentasHoy />} />
+        <Route path="/gastos" element={<Gastos />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />
