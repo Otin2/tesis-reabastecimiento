@@ -6,7 +6,7 @@ const SUGERENCIAS = ['¿Qué plato sale más?', '¿Cuánto pollo queda?', '¿Qu�
 
 export default function Asistente() {
   const [msgs, setMsgs] = useState([
-    { rol: 'bot', texto: 'Hola, soy tu asistente. Pregúntame por el stock, las ventas, los márgenes o qué comprar.' },
+    { rol: 'bot', texto: 'Hola, soy tu asistente. Pregúntame por el stock, las ventas, las ganancias o los márgenes.' },
   ])
   const [texto, setTexto] = useState('')
   const [escribiendo, setEscribiendo] = useState(false)

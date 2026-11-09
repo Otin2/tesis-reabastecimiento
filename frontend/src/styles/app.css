@@ -161,15 +161,41 @@ h2 { font-size: 17px; font-weight: 600; }
 .send svg { width: 22px; height: 22px; }
 .suggestions { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 
-/* Pedido */
-.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
-.summary strong { display: block; font-size: 19px; }
-.linea-head { display: flex; justify-content: space-between; align-items: flex-start; }
-.linea-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
-.linea-meta div { background: var(--bg); border-radius: 10px; padding: 8px; }
-.linea-meta b { display: block; font-size: 14px; margin-top: 2px; }
-.buy { color: var(--primary); font-weight: 700; font-size: 17px; }
-.linea.aceptada { border-color: var(--primary); background: var(--primary-light); }
-.actions { display: flex; gap: 8px; margin-top: 12px; }
-.edit-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-.empty { text-align: center; padding: 32px 16px; color: var(--muted); }
+/* Ganancias */
+.hero { background: var(--primary); color: #fff; border: none; }
+.hero .muted { color: rgba(255,255,255,.8); }
+.hero-num { font-size: 36px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0 12px; }
+.hero-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hero-grid b { display: block; font-size: 16px; }
+.bars { display: flex; align-items: flex-end; gap: 8px; height: 120px; margin-top: 12px; }
+.bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
+.bar i { display: block; width: 100%; background: var(--primary); border-radius: 6px 6px 0 0; min-height: 4px; }
+.bar span { font-size: 11px; color: var(--muted); }
+.plato-ganancia { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 16px; }
+.plato-ganancia.open { border-color: var(--primary); }
+.pg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pg-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.pg-nums div { background: var(--bg); border-radius: 10px; padding: 8px; }
+.pg-nums b { display: block; font-size: 14px; margin-top: 2px; }
+.receta { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.receta div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+
+/* Lista de compras */
+.compra {
+  display: flex; align-items: center; gap: 12px; position: relative;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+  padding: 14px 16px; min-height: 64px; cursor: pointer;
+}
+.compra input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.compra .caja {
+  flex: none; width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--border);
+  background: var(--surface); display: grid; place-items: center;
+}
+.compra input:checked + .caja { background: var(--primary); border-color: var(--primary); }
+.compra input:checked + .caja::after { content: ''; width: 6px; height: 12px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+.compra input:focus-visible + .caja { box-shadow: 0 0 0 3px var(--primary-light); border-color: var(--primary); }
+.compra-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.compra-cant { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-weight: 700; color: var(--primary); }
+.compra.hecho { background: var(--bg); }
+.compra.hecho .compra-txt, .compra.hecho .compra-cant { text-decoration: line-through; color: var(--muted); }
+.compra.hecho .pill { display: none; }

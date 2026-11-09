@@ -36,7 +36,7 @@ export default function Inicio() {
         <Tarjeta>
           <span className="muted small">Insumos por agotarse</span>
           <div className="stat-num danger">{data ? alertas.length : '–'}</div>
-          <span className="muted small">revisar pedido</span>
+          <span className="muted small">revisar stock</span>
         </Tarjeta>
       </div>
 
@@ -56,6 +56,11 @@ export default function Inicio() {
             <Pill nivel={i.nivel} />
           </div>
         ))}
+        {alertas.length > 0 && (
+          <Link to="/lista" style={{ textDecoration: 'none' }}>
+            <BotonPrimario variante="secondary" style={{ marginTop: 8 }} tabIndex={-1}>Generar lista de compras</BotonPrimario>
+          </Link>
+        )}
       </Tarjeta>
 
       <Link to="/asistente" style={{ textDecoration: 'none' }}>

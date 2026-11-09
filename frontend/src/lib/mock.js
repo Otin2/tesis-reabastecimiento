@@ -21,7 +21,6 @@ const insumos = [
 ]
 
 const ventasHoy = { platos: 18, total: 342 }
-const pedidosAceptados = []
 
 const pausa = (ms = 250) => new Promise((r) => setTimeout(r, ms))
 
@@ -37,31 +36,69 @@ function porAgotarse() {
     .sort((a, b) => (a.nivel === b.nivel ? 0 : a.nivel === 'Crítico' ? -1 : 1))
 }
 
-function pedidoSugerido() {
-  const lineas = porAgotarse().map((i) => {
-    const falta = i.punto_reorden * 2 - i.stock
-    const cantidad = Math.ceil(falta / i.presentacion_compra) * i.presentacion_compra
-    return {
-      insumo_id: i.id,
-      nombre: i.nombre,
-      unidad: i.unidad,
-      stock: i.stock,
-      punto_reorden: i.punto_reorden,
-      uso_semanal: i.uso_semanal,
+// Precio por unidad base (S/ por g o ml) y recetas de ejemplo. El lomo saltado
+// coincide con el PLAN: costo 9.29, ganancia 12.71, margen 57.8 %.
+const precios = {
+  Carne: 0.035, Papa: 0.0032, Arroz: 0.0045, Tomate: 0.004, Aceite: 0.009, Cebolla: 0.0028,
+  Pollo: 0.012, 'Ají amarillo': 0.008, Pescado: 0.03, Limón: 0.006, 'Maíz morado': 0.008,
+}
+const unidadDe = { Aceite: 'ml' }
+const recetas = {
+  1: { Pollo: 120, Arroz: 150, Papa: 100, Aceite: 15, Cebolla: 40 },
+  2: { Carne: 200, Papa: 250, Arroz: 150, Tomate: 80, Aceite: 30, Cebolla: 80 },
+  3: { Pollo: 250, Arroz: 180, 'Ají amarillo': 30, Cebolla: 60, Aceite: 20 },
+  4: { Pollo: 200, Papa: 200, 'Ají amarillo': 50, Arroz: 150, Aceite: 20 },
+  5: { Pescado: 250, Limón: 60, Cebolla: 60, 'Ají amarillo': 20 },
+  6: { 'Maíz morado': 150, Limón: 20 },
+}
+const vendidosSemana = { 1: 70, 2: 48, 3: 35, 4: 30, 5: 26, 6: 40 }
+const pesoDia = [0.1, 0.11, 0.12, 0.13, 0.17, 0.2, 0.17]
+const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+function calcularGanancias() {
+  const filas = platos.map((p) => {
+    const receta = Object.entries(recetas[p.id]).map(([insumo, cantidad]) => ({
+      insumo,
       cantidad,
-      costo_estimado: +(cantidad * i.costo_unitario).toFixed(2),
+      unidad: unidadDe[insumo] ?? 'g',
+      precio_unitario: precios[insumo],
+      costo: +(cantidad * precios[insumo]).toFixed(2),
+    }))
+    const costo = receta.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0)
+    const ganancia = p.precio - costo
+    const vendidos = vendidosSemana[p.id]
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      precio: p.precio,
+      costo: +costo.toFixed(2),
+      ganancia: +ganancia.toFixed(2),
+      margen_pct: +((ganancia / p.precio) * 100).toFixed(1),
+      vendidos,
+      ventas_total: +(p.precio * vendidos).toFixed(2),
+      ganancia_total: +(ganancia * vendidos).toFixed(2),
+      receta,
     }
   })
+  const ventas = filas.reduce((s, f) => s + f.ventas_total, 0)
+  const ganancia = filas.reduce((s, f) => s + f.ganancia_total, 0)
   return {
-    lineas,
-    resumen: {
-      n_insumos: lineas.length,
-      costo_total: +lineas.reduce((s, l) => s + l.costo_estimado, 0).toFixed(2),
+    platos: filas.sort((a, b) => b.margen_pct - a.margen_pct),
+    semana: {
+      ventas: +ventas.toFixed(2),
+      costo: +(ventas - ganancia).toFixed(2),
+      ganancia: +ganancia.toFixed(2),
+      margen_pct: +((ganancia / ventas) * 100).toFixed(1),
+      dias: DIAS.map((dia, i) => ({ dia, ganancia: +(ganancia * pesoDia[i]).toFixed(2) })),
     },
   }
 }
 
 export const mock = {
+  async ganancias() {
+    await pausa(200)
+    return calcularGanancias()
+  },
   async login() {
     await pausa()
     return { nombre: 'Dueña (demo)' }
@@ -78,18 +115,33 @@ export const mock = {
     ventasHoy.total += total
     return { ok: true, total }
   },
+  async listaCompras() {
+    await pausa(200)
+    // Fase 1 del PLAN: cantidad = punto_reorden × 2 − stock, redondeada a la presentación de compra.
+    const lineas = porAgotarse().map((i) => {
+      const cantidad = Math.ceil((i.punto_reorden * 2 - i.stock) / i.presentacion_compra) * i.presentacion_compra
+      return {
+        insumo_id: i.id,
+        nombre: i.nombre,
+        unidad: i.unidad,
+        nivel: i.nivel,
+        stock: i.stock,
+        cantidad,
+        costo_estimado: +(cantidad * i.costo_unitario).toFixed(2),
+      }
+    })
+    return {
+      fecha: new Date().toISOString().slice(0, 10),
+      lineas,
+      costo_total: +lineas.reduce((s, l) => s + l.costo_estimado, 0).toFixed(2),
+    }
+  },
+  async registrarEvento() {
+    return { ok: true }
+  },
   async resumen() {
     await pausa(150)
     return { ...ventasHoy, por_agotarse: porAgotarse() }
-  },
-  async pedido() {
-    await pausa(200)
-    return pedidoSugerido()
-  },
-  async aceptarPedido(lineas) {
-    await pausa()
-    pedidosAceptados.push(lineas)
-    return { ok: true }
   },
   async chat(texto) {
     await pausa(700)
@@ -111,10 +163,6 @@ export const mock = {
     }
     if (/(margen|ganancia)/.test(t)) {
       return { respuesta: 'El lomo saltado deja S/ 12.71 por plato, un margen de 57.8 %.', funcion_usada: 'margen_por_plato' }
-    }
-    if (/(pedido|comprar|compra)/.test(t)) {
-      const p = pedidoSugerido()
-      return { respuesta: `Te sugiero comprar ${p.resumen.n_insumos} insumos, por unos S/ ${p.resumen.costo_total.toFixed(2)}.`, funcion_usada: 'pedido_sugerido' }
     }
     return { respuesta: 'Solo puedo ayudarte con el inventario y las ventas del restaurante.', funcion_usada: 'fuera_de_tema' }
   },
