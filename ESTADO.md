@@ -52,7 +52,7 @@ La base ("Tesis_Reabastecimiento" en Supabase) es **multiempresa**: cada cuenta 
 Reglas:
 - `seed_demo.sql` **solo** crea el "Restaurante Demo"; no toca ningún otro restaurante. Nunca se carga en la cuenta real.
 - El restaurante de la hermana y su usuario se crean aparte (usuario en Supabase Auth + fila en `perfiles`). Se llena desde la propia app (Insumos, Menú y recetas, Vender...) o importando el CSV de insumos.
-- Las cuentas se crean en Supabase → Authentication → Users → Add user, y luego se vinculan con un `insert` en `perfiles` (ver el final de `seed_demo.sql`).
+- **Alta automática (migración 0003):** al crear un usuario en Supabase → Authentication → Users → Add user (con "Auto Confirm User"), un trigger le crea su perfil solo. Un correo que **empiece con `demo`** entra al "Restaurante Demo"; cualquier otro correo recibe un **restaurante propio y vacío** ("Restaurante de <usuario>"), que se puede renombrar con un `update` en `restaurantes`. Conviene **desactivar el registro abierto** (Authentication → Sign In / Providers → apagar "Allow new users to sign up") para que solo existan las cuentas que se crean a mano.
 - El frontend con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` usa la base real; **sin** esas variables funciona en modo demo con datos de `mock.js` (sin base de datos). Ambos modos usan el mismo código.
 - Para desplegar el frontend en Vercel: importar el repositorio, **Root Directory = `frontend`**, framework Vite. `frontend/vercel.json` hace que rutas como `/ganancias` funcionen al recargar.
 - Nota para la API: la vista `gastos_por_dia` reparte un gasto mensual entre **todos** los días del mes (incluidos los futuros). Al sumar un periodo hay que filtrar entre dos fechas (`dia > inicio and dia <= fin`).
@@ -113,14 +113,18 @@ Otros detalles: instalable como app (manifest + íconos, **sin modo sin conexió
 
 ### 5.2 Esquema SQL (aplicado y probado en Supabase)
 
-Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql` y `0002_mover_mi_restaurante_a_schema_private.sql` (la función de RLS vive en el schema `private`, que la API no expone). Se aplicó en el proyecto "Tesis_Reabastecimiento" y el asesor de seguridad de Supabase quedó **sin avisos**. Contenido:
+Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_mi_restaurante_a_schema_private.sql` (la función de RLS vive en el schema `private`, que la API no expone), `0003_alta_automatica_de_usuarios.sql` y `0004_funciones_y_vistas_para_la_api.sql`. Se aplicó en el proyecto "Tesis_Reabastecimiento" y el asesor de seguridad de Supabase quedó **sin avisos**. Contenido:
 
 - **Tablas:** `restaurantes`, `perfiles` (rol admin/empleado), `proveedores`, `insumos` (con `en_recetas` y `vida_util_dias`), `platos`, `recetas`, `ventas` (método de pago, tipo, estado activa/anulada), `venta_detalle`, `compras` (con `vence_el`), `movimientos_inventario` (libro de movimientos), `gastos_fijos`, `gastos`, `notas_negocio`, `acciones_pendientes`, `log_chat`, `lista_compras_eventos`.
 - **Triggers:** todo movimiento actualiza el stock; una venta descuenta los insumos de su receta; una compra suma stock, actualiza `costo_unitario` y calcula `vence_el`; anular una venta crea movimientos inversos.
 - **Función:** `generar_gastos_mes(restaurante, mes)` crea los gastos del mes desde las plantillas, sin duplicar.
 - **Vistas** (con `security_invoker`): `margen_por_plato`, `insumos_por_agotarse`, `consumo_diario_insumo` (entrada del motor), `ventas_por_plato_dia`, `ganancia_por_dia`, `gastos_por_dia` (reparto por día), `perdidas_por_dia`, `insumos_por_vencer`, `resumen_hoy`.
 - **RLS:** activado en todo; los usuarios solo pueden `select` lo de su restaurante. Sin políticas de escritura (solo escribe el backend). Las funciones de trigger y `generar_gastos_mes` no se pueden llamar desde la API pública.
-- **Pruebas:** `supabase/tests/prueba_esquema.sql` verifica margen del lomo, descuento de stock al vender, anular, compra, vencimiento, mermas, gastos prorrateados y aislamiento entre restaurantes. Todas pasaron el 9-nov-2026. No deja datos (termina con una excepción a propósito que deshace todo).
+- **Funciones para el backend (migración 0004).** Cada escritura es **una transacción en la base**; el backend solo las llama con la *service role* (están bloqueadas para usuarios y público). Los precios salen de la tabla `platos`, nunca del cliente:
+  `registrar_venta(restaurante, usuario, items, metodo, tipo, mesa)`, `anular_venta(restaurante, venta, motivo)`, `registrar_compra(restaurante, usuario, lineas, proveedor?)`, `ajustar_stock(restaurante, usuario, insumo, tipo, cantidad, motivo?)`, `confirmar_accion(restaurante, usuario, accion)` (ejecuta lo que el agente propuso: venta, compra, merma, uso propio o nota). Se llaman con `supabase.rpc(...)`.
+- **Integridad entre restaurantes (0004):** triggers `check_tenant` impiden que una receta, un detalle de venta, una compra o un movimiento mezclen datos de restaurantes distintos, aunque el backend se equivoque.
+- **Vistas nuevas (0004):** `insumos_resumen` (nivel y "alcanza X días" = stock ÷ uso diario de los últimos 28 días; los de uso general salen sin stock), `uso_diario_insumo` y `lista_compras_sugerida` (fase 1 del PLAN: punto de reorden × 2 − stock, redondeado a la presentación). Con esto la API solo lee; no calcula.
+- **Pruebas:** `supabase/tests/prueba_esquema.sql` verifica margen del lomo, descuento de stock al vender, anular, compra, vencimiento, mermas, gastos prorrateados y aislamiento entre restaurantes. Todas pasaron el 9-nov-2026. Las funciones de la migración 0004 también se probaron (como *service role*, con validaciones, doble anulación, otro restaurante, el agente confirmando una acción y que un usuario normal no pueda llamarlas); esa prueba se corrió a mano y no está guardada como archivo. No deja datos (termina con una excepción a propósito que deshace todo).
 - **Prueba de referencia obligatoria:** lomo saltado → costo **S/ 9.29**, ganancia **S/ 12.71**, margen **57.8 %** (carne 200 g a S/ 35/kg, papa 250 g a 3.20/kg, arroz 150 g a 4.50/kg, tomate 80 g a 4.00/kg, aceite 30 ml a 9.00/L, cebolla 80 g a 2.80/kg).
 
 ### 5.3 Verificación hecha
@@ -187,7 +191,7 @@ Notas:
 
 ### 8.2 API (FastAPI) — `api/`
 Estructura del PLAN: `index.py`, `db.py`, `auth.py` (valida JWT y obtiene `restaurante_id`), `agente/`, `motor/`.
-- [ ] Todas las rutas de la sección 7.
+- [ ] Todas las rutas de la sección 7. **Escribir = llamar a las funciones de la sección 5.2; leer = consultar las vistas.** Guía: `POST /api/ventas` → `registrar_venta`; `POST /api/ventas/{id}/anular` → `anular_venta`; `POST /api/compras` → `registrar_compra`; `POST /api/insumos/{id}/ajuste` → `ajustar_stock`; `POST /api/chat/acciones/{id}/confirmar` → `confirmar_accion`; `GET /api/insumos` → `insumos_resumen`; `GET /api/lista-compras` → `lista_compras_sugerida`; `GET /api/resumen` → `resumen_hoy` + `insumos_por_agotarse` + `insumos_por_vencer`; `GET /api/ganancias` → `ganancia_por_dia`, `ventas_por_plato_dia`, `perdidas_por_dia`, `gastos_por_dia` (filtrando entre dos fechas).
 - [ ] Orden sugerido: `health` → `auth` → `platos`/`ventas`/`resumen` → insumos y compras → menú → gastos → ganancias → lista de compras → chat.
 - [ ] Vercel: verificar en la documentación vigente cómo desplegar FastAPI junto a la SPA de Vite en un mismo proyecto (ajustar `vercel.json`). Si el chat supera los 10 s del plan Hobby, mover el backend a Render.
 
