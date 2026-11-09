@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, fmtCantidad, fmtSoles } from '../lib/api'
-import { useAuth } from '../lib/auth'
-import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
+import { useAjustes } from '../lib/ajustes'
+import { Tarjeta, Pill, BotonPrimario, Icons } from '../components/ui'
 
 export default function Inicio() {
-  const { logout } = useAuth()
+  const { ajustes } = useAjustes()
   const [data, setData] = useState(null)
   const [error, setError] = useState(false)
 
@@ -20,9 +20,9 @@ export default function Inicio() {
       <div className="header">
         <div>
           <h1>Hola 👋</h1>
-          <p className="muted">{new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="muted">{ajustes.restaurante ? `${ajustes.restaurante} · ` : ''}{new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
-        <button className="link-btn" onClick={logout}>Salir</button>
+        <Link to="/ajustes" className="icon-btn" aria-label="Ajustes">{Icons.ajustes}</Link>
       </div>
 
       {error && <p className="error">No se pudo cargar el resumen. Intenta de nuevo.</p>}
@@ -45,9 +45,9 @@ export default function Inicio() {
       </Link>
 
       <Tarjeta>
-        <h2 style={{ marginBottom: 6 }}>Alertas de stock</h2>
-        {data && alertas.length === 0 && <p className="muted">Todo en orden, no hay insumos bajos.</p>}
-        {alertas.map((i) => (
+        <h2 style={{ marginBottom: 6 }}>{ajustes.alertas ? 'Alertas de stock' : 'Compras'}</h2>
+        {ajustes.alertas && data && alertas.length === 0 && <p className="muted">Todo en orden, no hay insumos bajos.</p>}
+        {ajustes.alertas && alertas.map((i) => (
           <div className="alert-row" key={i.id}>
             <div>
               <div className="row-title">{i.nombre}</div>
@@ -64,7 +64,7 @@ export default function Inicio() {
       </Tarjeta>
 
       <Link to="/asistente" style={{ textDecoration: 'none' }}>
-        <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--primary)', background: 'var(--primary-light)', borderColor: 'transparent' }}>
+        <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--primary-ink)', background: 'var(--primary-light)', borderColor: 'transparent' }}>
           <span style={{ fontWeight: 600 }}>Pregúntale al asistente</span>
           <span aria-hidden>→</span>
         </Tarjeta>

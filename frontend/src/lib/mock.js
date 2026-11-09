@@ -127,6 +127,8 @@ export const mock = {
         nivel: i.nivel,
         stock: i.stock,
         cantidad,
+        presentacion_compra: i.presentacion_compra,
+        costo_unitario: i.costo_unitario,
         costo_estimado: +(cantidad * i.costo_unitario).toFixed(2),
       }
     })

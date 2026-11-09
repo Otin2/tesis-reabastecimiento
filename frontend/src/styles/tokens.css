@@ -1,7 +1,9 @@
 :root {
   --primary: #118B6B;
+  --primary-ink: #118B6B;       /* texto/íconos de color primario sobre fondos claros */
   --primary-light: #E1F4ED;
   --bg: #F6F7F9;
+  --outer: #E9ECF0;
   --surface: #FFFFFF;
   --text: #191D26;
   --muted: #6B7380;
@@ -13,5 +15,40 @@
   --radius-card: 16px;
   --radius-btn: 14px;
   --radius-pill: 999px;
+  color-scheme: light;
   font-family: Inter, system-ui, sans-serif;
+}
+
+/* Modo oscuro: manual (data-theme="dark") o automático según el sistema */
+:root[data-theme="dark"] {
+  --primary-ink: #4FD1A8;
+  --primary-light: #123428;
+  --bg: #0F1318;
+  --outer: #080A0D;
+  --surface: #181D25;
+  --text: #ECEFF4;
+  --muted: #98A2B3;
+  --border: #2A313C;
+  --danger: #FF7B7B;
+  --danger-light: #3A1D1D;
+  --warning: #F2A94B;
+  --warning-light: #3A2C12;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary-ink: #4FD1A8;
+    --primary-light: #123428;
+    --bg: #0F1318;
+    --outer: #080A0D;
+    --surface: #181D25;
+    --text: #ECEFF4;
+    --muted: #98A2B3;
+    --border: #2A313C;
+    --danger: #FF7B7B;
+    --danger-light: #3A1D1D;
+    --warning: #F2A94B;
+    --warning-light: #3A2C12;
+    color-scheme: dark;
+  }
 }

@@ -6,7 +6,7 @@ const fechaLarga = (iso) =>
 // Texto plano: sirve para WhatsApp y como respaldo si el celular no puede compartir archivos.
 export function textoLista(lista) {
   const filas = lista.lineas.map((l) => `• ${l.nombre}: ${fmtCantidad(l.cantidad, l.unidad)}`)
-  return [`Lista de compras – ${fechaLarga(lista.fecha)}`, '', ...filas, '', `Costo estimado: ${fmtSoles(lista.costo_total)}`].join('\n')
+  return [`Lista de compras – ${fechaLarga(lista.fecha)}`, '', ...filas, '', `Costo estimado${lista.hayExtras ? ' (sin extras)' : ''}: ${fmtSoles(lista.costo_total)}`].join('\n')
 }
 
 // PDF con casillas vacías para tachar a mano. jsPDF se carga solo al pedirlo.
@@ -29,14 +29,14 @@ export async function generarPdf(lista) {
     doc.setDrawColor(107, 115, 128).rect(20, y - 5, 6, 6)
     doc.setFont('helvetica', 'bold').setFontSize(13).text(l.nombre, 32, y)
     doc.setFont('helvetica', 'normal').text(fmtCantidad(l.cantidad, l.unidad), 100, y)
-    doc.setTextColor(107, 115, 128).text(fmtSoles(l.costo_estimado), 190, y, { align: 'right' })
+    doc.setTextColor(107, 115, 128).text(l.costo_estimado == null ? '-' : fmtSoles(l.costo_estimado), 190, y, { align: 'right' })
     doc.setTextColor(25, 29, 38)
     doc.setDrawColor(227, 230, 235).line(20, y + 4, 190, y + 4)
     y += 12
   })
 
   y += 4
-  doc.setFont('helvetica', 'bold').setFontSize(13).text('Costo estimado', 20, y)
+  doc.setFont('helvetica', 'bold').setFontSize(13).text(lista.hayExtras ? 'Costo estimado (sin extras)' : 'Costo estimado', 20, y)
   doc.text(fmtSoles(lista.costo_total), 190, y, { align: 'right' })
 
   return doc.output('blob')

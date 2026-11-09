@@ -7,6 +7,7 @@ import RegistrarVenta from './pages/RegistrarVenta'
 import Asistente from './pages/Asistente'
 import Ganancias from './pages/Ganancias'
 import ListaCompras from './pages/ListaCompras'
+import Ajustes from './pages/Ajustes'
 
 export default function App() {
   const { user, cargando } = useAuth()
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/ganancias" element={<Ganancias />} />
         <Route path="/lista" element={<ListaCompras />} />
+        <Route path="/ajustes" element={<Ajustes />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />
