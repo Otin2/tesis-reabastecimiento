@@ -2,16 +2,16 @@
 
 > Documento para quien continúe el trabajo (otra persona o otra cuenta de Claude Code).
 > Léelo junto con [PLAN.md](PLAN.md): el plan dice **qué se quería construir**; este archivo dice **qué se hizo, qué cambió y qué falta**.
-> Última actualización: 9 de noviembre de 2026.
+> Última actualización: 9 de noviembre de 2026 (base de datos aplicada y probada en Supabase).
 
 ---
 
 ## 1. Resumen en 30 segundos
 
 - **Tesis:** "Diseño e implementación de un agente conversacional para la recomendación de reabastecimiento en pequeñas empresas comerciales". Caso real: el restaurante pequeño de la hermana del autor, en Lima.
-- **Hecho:** el **frontend (React + Vite) está completo**, corre en **modo demo** con datos de ejemplo y no necesita backend. También hay un **borrador del esquema SQL** (Supabase) que **nunca se ejecutó**.
-- **Falta:** **todo el backend** (Supabase real, FastAPI, motor de pronóstico, agente con Gemini), conectar el frontend, desplegar y hacer el piloto de 4 semanas.
-- **Siguiente paso recomendado:** crear el proyecto de Supabase, ejecutar y probar `supabase/migrations/0001_esquema_inicial.sql`, y después la API.
+- **Hecho:** el **frontend (React + Vite) está completo**, corre en **modo demo** con datos de ejemplo y no necesita backend. El **esquema SQL ya está aplicado y probado** en un proyecto de Supabase ("Tesis_Reabastecimiento").
+- **Falta:** el **seed** de datos de ejemplo, el usuario de Supabase Auth con su perfil, y todo el backend (FastAPI, motor de pronóstico, agente con Gemini); conectar el frontend, desplegar y hacer el piloto de 4 semanas.
+- **Siguiente paso recomendado:** crear `supabase/seed.sql` (restaurante de ejemplo + un segundo restaurante para probar el aislamiento) y empezar la API con `/api/health`, `auth` y `/api/platos`.
 
 ---
 
@@ -20,7 +20,7 @@
 1. Clona el repo y abre la carpeta `tesis/` en Claude Code.
 2. Pega este mensaje de arranque:
 
-   > Lee `PLAN.md` y `ESTADO.md` completos antes de tocar nada. El frontend ya está hecho (modo demo). Vamos a construir el backend. Empieza por crear/validar el esquema de Supabase en `supabase/migrations/0001_esquema_inicial.sql` (está sin probar) y sigue el orden de la sección 8 de `ESTADO.md`. Respeta las reglas de la sección 3. Los commits NO deben llevar `Co-Authored-By`.
+   > Lee `PLAN.md` y `ESTADO.md` completos antes de tocar nada. El frontend ya está hecho (modo demo). Vamos a construir el backend. El esquema de Supabase ya está aplicado y probado (migraciones en `supabase/migrations/`, prueba en `supabase/tests/prueba_esquema.sql`). Sigue el orden de la sección 8 de `ESTADO.md`: seed, API, motor, agente. Respeta las reglas de la sección 3. Los commits NO deben llevar `Co-Authored-By`.
 
 3. Nada de claves en el repositorio (ver sección 11). Cada persona usa sus propias claves en un `.env` local.
 
@@ -92,15 +92,16 @@ Navegación inferior: **Inicio · Vender · Asistente · Ganancias · Más**.
 
 Otros detalles: instalable como app (manifest + íconos, **sin modo sin conexión**), tokens de diseño del Figma en `src/styles/tokens.css`, fuente Inter (se registró como excepción del detector de diseño porque el plan la exige).
 
-### 5.2 Esquema SQL (borrador, SIN EJECUTAR)
+### 5.2 Esquema SQL (aplicado y probado en Supabase)
 
-`supabase/migrations/0001_esquema_inicial.sql`. **Ningún motor de Postgres lo ha ejecutado todavía**, puede tener errores de sintaxis. Contenido:
+Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql` y `0002_mover_mi_restaurante_a_schema_private.sql` (la función de RLS vive en el schema `private`, que la API no expone). Se aplicó en el proyecto "Tesis_Reabastecimiento" y el asesor de seguridad de Supabase quedó **sin avisos**. Contenido:
 
 - **Tablas:** `restaurantes`, `perfiles` (rol admin/empleado), `proveedores`, `insumos` (con `en_recetas` y `vida_util_dias`), `platos`, `recetas`, `ventas` (método de pago, tipo, estado activa/anulada), `venta_detalle`, `compras` (con `vence_el`), `movimientos_inventario` (libro de movimientos), `gastos_fijos`, `gastos`, `notas_negocio`, `acciones_pendientes`, `log_chat`, `lista_compras_eventos`.
 - **Triggers:** todo movimiento actualiza el stock; una venta descuenta los insumos de su receta; una compra suma stock, actualiza `costo_unitario` y calcula `vence_el`; anular una venta crea movimientos inversos.
 - **Función:** `generar_gastos_mes(restaurante, mes)` crea los gastos del mes desde las plantillas, sin duplicar.
 - **Vistas** (con `security_invoker`): `margen_por_plato`, `insumos_por_agotarse`, `consumo_diario_insumo` (entrada del motor), `ventas_por_plato_dia`, `ganancia_por_dia`, `gastos_por_dia` (reparto por día), `perdidas_por_dia`, `insumos_por_vencer`, `resumen_hoy`.
-- **RLS:** activado en todo; los usuarios solo pueden `select` lo de su restaurante. Sin políticas de escritura (solo escribe el backend).
+- **RLS:** activado en todo; los usuarios solo pueden `select` lo de su restaurante. Sin políticas de escritura (solo escribe el backend). Las funciones de trigger y `generar_gastos_mes` no se pueden llamar desde la API pública.
+- **Pruebas:** `supabase/tests/prueba_esquema.sql` verifica margen del lomo, descuento de stock al vender, anular, compra, vencimiento, mermas, gastos prorrateados y aislamiento entre restaurantes. Todas pasaron el 9-nov-2026. No deja datos (termina con una excepción a propósito que deshace todo).
 - **Prueba de referencia obligatoria:** lomo saltado → costo **S/ 9.29**, ganancia **S/ 12.71**, margen **57.8 %** (carne 200 g a S/ 35/kg, papa 250 g a 3.20/kg, arroz 150 g a 4.50/kg, tomate 80 g a 4.00/kg, aceite 30 ml a 9.00/L, cebolla 80 g a 2.80/kg).
 
 ### 5.3 Verificación hecha
@@ -113,7 +114,7 @@ Otros detalles: instalable como app (manifest + íconos, **sin modo sin conexió
 
 ## 6. Qué NO está verificado
 
-- El **SQL** (nunca ejecutado).
+- El **seed** y el flujo con un usuario real de Supabase Auth (aún no existen).
 - **Descargar PDF y Compartir** en un celular real (el menú nativo de compartir depende del dispositivo).
 - Visualmente: Gastos, Insumos, Ventas de hoy, Lista de compras, Ya compré y Menú (la lista) no se vieron en pantalla; solo se probó su lógica.
 - **Modo claro:** se revisó poco; la mayor parte de la revisión visual fue en modo oscuro.
@@ -158,11 +159,11 @@ Notas:
 ## 8. Qué falta, en orden
 
 ### 8.1 Base de datos (Supabase)
-- [ ] Crear el proyecto de Supabase.
-- [ ] Ejecutar `0001_esquema_inicial.sql` y **corregir los errores que aparezcan**.
+- [x] Crear el proyecto de Supabase ("Tesis_Reabastecimiento").
+- [x] Aplicar el esquema (`0001` y `0002`) sin errores.
 - [ ] Crear `seed.sql` con el restaurante de ejemplo del PLAN (6 platos, 11+ insumos, recetas, stock inicial con varios insumos bajo el punto de reorden). Fácil de reemplazar con las recetas reales.
 - [ ] **Segundo restaurante** en el seed para probar que un usuario nunca ve datos de otro.
-- [ ] Tests SQL: margen del lomo (9.29 / 12.71 / 57.8 %), una venta descuenta bien, anular devuelve el stock, una compra actualiza stock y costo, vencimiento.
+- [x] Tests SQL (`supabase/tests/prueba_esquema.sql`): margen del lomo, venta, anular, compra, vencimiento, mermas, gastos, aislamiento. Falta convertirlos al seed definitivo y agregar casos del segundo restaurante.
 - [ ] Crear usuario en Supabase Auth con su fila en `perfiles`.
 
 ### 8.2 API (FastAPI) — `api/`

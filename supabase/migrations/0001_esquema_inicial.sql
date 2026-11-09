@@ -1,5 +1,6 @@
 -- =====================================================================
--- 0001_esquema_inicial.sql   (BORRADOR para revisión; no aplicado)
+-- 0001_esquema_inicial.sql
+-- Aplicado en el proyecto Supabase "Tesis_Reabastecimiento" el 9-nov-2026.
 --
 -- Reglas del diseño
 --  * Todo se guarda en unidad base (g, ml, unid). Costos en S/ por unidad base.
@@ -25,10 +26,11 @@ create table public.perfiles (
   nombre text,
   rol text not null default 'admin' check (rol in ('admin', 'empleado'))
 );
+create index on public.perfiles (restaurante_id);
 
 -- Devuelve el restaurante del usuario autenticado (lo usan las políticas RLS).
 create or replace function public.mi_restaurante() returns uuid
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = '' as $$
   select restaurante_id from public.perfiles where user_id = auth.uid()
 $$;
 
@@ -41,6 +43,7 @@ create table public.proveedores (
   lead_time_dias int not null default 1,
   notas text
 );
+create index on public.proveedores (restaurante_id);
 
 create table public.insumos (
   id bigint generated always as identity primary key,
@@ -58,6 +61,7 @@ create table public.insumos (
   activo boolean not null default true,
   unique (restaurante_id, nombre)
 );
+create index on public.insumos (proveedor_id);
 
 create table public.platos (
   id bigint generated always as identity primary key,
@@ -75,6 +79,7 @@ create table public.recetas (               -- cuánto lleva UN plato
   cantidad numeric not null check (cantidad > 0),
   primary key (plato_id, insumo_id)
 );
+create index on public.recetas (insumo_id);
 
 -- ---------- Ventas ----------
 
@@ -169,7 +174,7 @@ create table public.acciones_pendientes (
   id uuid primary key default gen_random_uuid(),
   restaurante_id uuid not null references public.restaurantes on delete cascade,
   user_id uuid not null references auth.users on delete cascade,
-  tipo text not null check (tipo in ('venta', 'compra', 'merma', 'nota', 'lista_item')),
+  tipo text not null check (tipo in ('venta', 'compra', 'merma', 'consumo_propio', 'nota', 'lista_item')),
   payload jsonb not null,                   -- datos ya validados por el backend
   resumen text not null,                    -- texto mostrado en la tarjeta de confirmación
   estado text not null default 'pendiente' check (estado in ('pendiente', 'confirmada', 'cancelada', 'expirada')),
@@ -194,23 +199,36 @@ create table public.lista_compras_eventos (
   id bigint generated always as identity primary key,
   restaurante_id uuid not null references public.restaurantes on delete cascade,
   user_id uuid references auth.users on delete set null,
-  tipo text not null check (tipo in ('generada', 'pdf', 'compartida', 'marcada', 'ajustada', 'extra_agregada', 'insumo_creado')),
+  tipo text not null check (tipo in ('generada', 'pdf', 'compartida', 'marcada', 'ajustada', 'extra_agregada', 'insumo_creado', 'comprada')),
   detalle jsonb not null default '{}',
   created_at timestamptz not null default now()
 );
 
+-- Índices de apoyo (llaves foráneas y consultas por restaurante y fecha)
 create index on public.ventas (restaurante_id, fecha);
 create index on public.venta_detalle (venta_id);
+create index on public.venta_detalle (plato_id);
+create index on public.compras (restaurante_id, fecha);
+create index on public.compras (insumo_id);
+create index on public.compras (proveedor_id);
+create index on public.movimientos_inventario (restaurante_id, fecha);
 create index on public.movimientos_inventario (insumo_id);
 create index on public.movimientos_inventario (venta_id);
+create index on public.movimientos_inventario (compra_id);
+create index on public.gastos (restaurante_id, fecha);
+create index on public.gastos (gasto_fijo_id);
+create index on public.gastos_fijos (restaurante_id);
+create index on public.notas_negocio (restaurante_id);
+create index on public.acciones_pendientes (restaurante_id);
+create index on public.acciones_pendientes (user_id);
 create index on public.log_chat (restaurante_id, created_at);
-create index on public.compras (restaurante_id, fecha);
+create index on public.lista_compras_eventos (restaurante_id);
 
 -- ---------- Triggers: la base de datos hace los cálculos ----------
 
 -- 1) Todo movimiento actualiza el stock.
 create or replace function public.trg_movimiento_aplica_stock() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   update public.insumos set stock = stock + new.cantidad where id = new.insumo_id;
   return new;
@@ -222,7 +240,7 @@ create trigger movimiento_aplica_stock
 
 -- 2) Una venta descuenta, por cada plato, los insumos de su receta.
 create or replace function public.trg_venta_detalle_descuenta() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 declare
   v_rest uuid;
   v_user uuid;
@@ -241,7 +259,7 @@ create trigger venta_detalle_descuenta
 
 -- 3) Una compra suma al stock y actualiza el costo con el último precio pagado.
 create or replace function public.trg_compra_suma() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   insert into public.movimientos_inventario (restaurante_id, insumo_id, tipo, cantidad, compra_id, registrado_por)
   values (new.restaurante_id, new.insumo_id, 'compra', new.cantidad, new.id, new.registrado_por);
@@ -251,7 +269,7 @@ end $$;
 
 -- Calcula cuándo vence lo que se compra, según la vida útil del insumo.
 create or replace function public.trg_compra_vence() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 declare v_dias int;
 begin
   select vida_util_dias into v_dias from public.insumos where id = new.insumo_id;
@@ -271,7 +289,7 @@ create trigger compra_suma
 
 -- 4) Anular una venta devuelve los insumos con movimientos inversos (no se borra nada).
 create or replace function public.trg_venta_anula() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   if old.estado = 'activa' and new.estado = 'anulada' then
     insert into public.movimientos_inventario (restaurante_id, insumo_id, tipo, cantidad, motivo, venta_id, registrado_por)
@@ -287,9 +305,9 @@ create trigger venta_anula
   for each row execute function public.trg_venta_anula();
 
 -- Crea los gastos del mes a partir de gastos_fijos. Se puede llamar varias veces:
--- no duplica lo que ya existe.
+-- no duplica lo que ya existe. Solo la puede llamar el backend (service role).
 create or replace function public.generar_gastos_mes(p_restaurante uuid, p_mes date) returns int
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 declare
   v_ini date := date_trunc('month', p_mes)::date;
   v_dias int := extract(day from (v_ini + interval '1 month' - interval '1 day'))::int;
@@ -303,6 +321,16 @@ begin
   get diagnostics v_n = row_count;
   return v_n;
 end $$;
+
+-- Las funciones de trigger y de mantenimiento no deben poder llamarse desde la API pública.
+revoke execute on function public.trg_movimiento_aplica_stock() from public, anon, authenticated;
+revoke execute on function public.trg_venta_detalle_descuenta() from public, anon, authenticated;
+revoke execute on function public.trg_compra_suma() from public, anon, authenticated;
+revoke execute on function public.trg_compra_vence() from public, anon, authenticated;
+revoke execute on function public.trg_venta_anula() from public, anon, authenticated;
+revoke execute on function public.generar_gastos_mes(uuid, date) from public, anon, authenticated;
+-- mi_restaurante() la usan las políticas RLS: solo usuarios autenticados.
+revoke execute on function public.mi_restaurante() from public, anon;
 
 -- ---------- Vistas (security_invoker: respetan RLS del usuario) ----------
 
@@ -426,25 +454,25 @@ begin
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format(
-      'create policy "leer lo propio" on public.%I for select to authenticated using (restaurante_id = public.mi_restaurante())', t);
+      'create policy "leer lo propio" on public.%I for select to authenticated using (restaurante_id = (select public.mi_restaurante()))', t);
   end loop;
 end $$;
 
 alter table public.restaurantes enable row level security;
 create policy "leer lo propio" on public.restaurantes for select to authenticated
-  using (id = public.mi_restaurante());
+  using (id = (select public.mi_restaurante()));
 
 alter table public.perfiles enable row level security;
 create policy "leer perfil propio" on public.perfiles for select to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 alter table public.recetas enable row level security;
 create policy "leer lo propio" on public.recetas for select to authenticated
-  using (exists (select 1 from public.platos p where p.id = plato_id and p.restaurante_id = public.mi_restaurante()));
+  using (exists (select 1 from public.platos p where p.id = plato_id and p.restaurante_id = (select public.mi_restaurante())));
 
 alter table public.venta_detalle enable row level security;
 create policy "leer lo propio" on public.venta_detalle for select to authenticated
-  using (exists (select 1 from public.ventas v where v.id = venta_id and v.restaurante_id = public.mi_restaurante()));
+  using (exists (select 1 from public.ventas v where v.id = venta_id and v.restaurante_id = (select public.mi_restaurante())));
 
 -- Nota: sin políticas de INSERT/UPDATE/DELETE, solo el backend (service role) escribe.
 -- El backend siempre toma restaurante_id del token validado, nunca del cuerpo ni del LLM.
