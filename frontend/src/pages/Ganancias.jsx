@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, fmtCantidad, fmtSoles } from '../lib/api'
 import { Tarjeta } from '../components/ui'
 
@@ -10,6 +10,29 @@ const COLOR = {
   Sueldos: '#A07CE8',
   Alquiler: 'var(--danger)',
   Otros: 'var(--muted)',
+}
+
+// Casilla de un grupo: marca o desmarca todos sus renglones a la vez.
+// Queda "a medias" cuando solo algunos están marcados.
+function FilaGrupo({ grupo, items, apagados, onCambiar }) {
+  const ref = useRef(null)
+  const activos = items.filter((c) => !apagados.includes(c.id))
+  const todos = activos.length === items.length
+  const ninguno = activos.length === 0
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !todos && !ninguno
+  }, [todos, ninguno])
+
+  return (
+    <label className="costo-fila grupo">
+      <input ref={ref} type="checkbox" checked={todos} onChange={() => onCambiar(items.map((c) => c.id), todos)} />
+      <span className="caja" aria-hidden />
+      <i className="dot" style={{ background: COLOR[grupo] }} aria-hidden />
+      <span className="costo-nombre">{grupo}</span>
+      <b className={ninguno ? 'muted' : ''}>−{fmtSoles(activos.reduce((s, c) => s + c.monto, 0))}</b>
+    </label>
+  )
 }
 
 export default function Ganancias() {
@@ -41,6 +64,9 @@ export default function Ganancias() {
     .filter((g) => g.monto > 0)
 
   const alternar = (id) => setApagados((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]))
+  // Apaga (si estaban todos prendidos) o prende todos los ids de un grupo.
+  const cambiarGrupo = (ids, estabanTodosPrendidos) =>
+    setApagados((a) => (estabanTodosPrendidos ? [...new Set([...a, ...ids])] : a.filter((x) => !ids.includes(x))))
 
   return (
     <div className="screen">
@@ -74,7 +100,7 @@ export default function Ganancias() {
         </div>
         {porGrupo.map(({ grupo, items }) => (
           <div key={grupo} className="costo-grupo">
-            <div className="costo-titulo small muted">{grupo}</div>
+            <FilaGrupo grupo={grupo} items={items} apagados={apagados} onCambiar={cambiarGrupo} />
             {items.map((c) => {
               const on = !apagados.includes(c.id)
               return (

@@ -8,6 +8,12 @@ import Asistente from './pages/Asistente'
 import Ganancias from './pages/Ganancias'
 import ListaCompras from './pages/ListaCompras'
 import Ajustes from './pages/Ajustes'
+import RegistrarCompra from './pages/RegistrarCompra'
+import Mas from './pages/Mas'
+import Menu from './pages/Menu'
+import MenuEditor from './pages/MenuEditor'
+import Insumos from './pages/Insumos'
+import VentasHoy from './pages/VentasHoy'
 
 export default function App() {
   const { user, cargando } = useAuth()
@@ -31,7 +37,13 @@ export default function App() {
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/ganancias" element={<Ganancias />} />
         <Route path="/lista" element={<ListaCompras />} />
+        <Route path="/lista/comprar" element={<RegistrarCompra />} />
         <Route path="/ajustes" element={<Ajustes />} />
+        <Route path="/mas" element={<Mas />} />
+        <Route path="/menu" element={<Menu />} />
+        <Route path="/menu/:id" element={<MenuEditor />} />
+        <Route path="/insumos" element={<Insumos />} />
+        <Route path="/ventas" element={<VentasHoy />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />

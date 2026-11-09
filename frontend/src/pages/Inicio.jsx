@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtCantidad, fmtSoles } from '../lib/api'
+import { api, fmtCantidad, fmtDias, fmtSoles } from '../lib/api'
 import { useAjustes } from '../lib/ajustes'
 import { Tarjeta, Pill, BotonPrimario, Icons } from '../components/ui'
 
@@ -14,6 +14,7 @@ export default function Inicio() {
   }, [])
 
   const alertas = data?.por_agotarse ?? []
+  const porVencer = data?.por_vencer ?? []
 
   return (
     <div className="screen">
@@ -28,11 +29,11 @@ export default function Inicio() {
       {error && <p className="error">No se pudo cargar el resumen. Intenta de nuevo.</p>}
 
       <div className="stats">
-        <Tarjeta>
+        <Link to="/ventas" className="card stat-link">
           <span className="muted small">Platos vendidos hoy</span>
           <div className="stat-num">{data ? data.platos : '–'}</div>
-          <span className="muted small">{data ? fmtSoles(data.total) : ' '}</span>
-        </Tarjeta>
+          <span className="muted small">{data ? `${fmtSoles(data.total)} · ver ventas ›` : ' '}</span>
+        </Link>
         <Tarjeta>
           <span className="muted small">Insumos por agotarse</span>
           <div className="stat-num danger">{data ? alertas.length : '–'}</div>
@@ -51,7 +52,10 @@ export default function Inicio() {
           <div className="alert-row" key={i.id}>
             <div>
               <div className="row-title">{i.nombre}</div>
-              <div className="muted small">Quedan {fmtCantidad(i.stock, i.unidad)}</div>
+              <div className="muted small">
+                Quedan {fmtCantidad(i.stock, i.unidad)}
+                {i.dias_restantes != null && ` · alcanza ${fmtDias(i.dias_restantes)}`}
+              </div>
             </div>
             <Pill nivel={i.nivel} />
           </div>
@@ -62,6 +66,21 @@ export default function Inicio() {
           </Link>
         )}
       </Tarjeta>
+
+      {porVencer.length > 0 && (
+        <Tarjeta>
+          <h2 style={{ marginBottom: 6 }}>Por vencer</h2>
+          {porVencer.map((i) => (
+            <Link key={i.insumo_id} to="/insumos" state={{ abrir: i.insumo_id }} className="alert-row alert-link">
+              <div>
+                <div className="row-title">{i.nombre}</div>
+                <div className="muted small">Quedan {fmtCantidad(i.stock, i.unidad)} · toca para revisar</div>
+              </div>
+              <Pill nivel={i.dias_restantes <= 0 ? 'Crítico' : 'Bajo'} texto={i.estado} />
+            </Link>
+          ))}
+        </Tarjeta>
+      )}
 
       <Link to="/asistente" style={{ textDecoration: 'none' }}>
         <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--primary-ink)', background: 'var(--primary-light)', borderColor: 'transparent' }}>

@@ -1,30 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { api, fmtCantidad, fmtSoles } from '../lib/api'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { api, fmtCantidad, fmtDias, fmtSoles } from '../lib/api'
 import { compartir, descargar, generarPdf, nombreArchivo } from '../lib/lista'
 import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
+import FormInsumo from '../components/FormInsumo'
 
-const clave = (fecha) => `lista-compras-${fecha}`
+export const claveLista = (fecha) => `lista-compras-${fecha}`
 const VACIO = { marcados: [], ajustes: {}, extras: [] }
 const leer = (fecha) => {
-  try { return { ...VACIO, ...JSON.parse(localStorage.getItem(clave(fecha)) || '{}') } } catch { return VACIO }
+  try { return { ...VACIO, ...JSON.parse(localStorage.getItem(claveLista(fecha)) || '{}') } } catch { return VACIO }
 }
 
-// Unidad elegida en pantalla -> [unidad base, factor]. Todo se guarda en unidad base.
-const UNIDADES = { kg: ['g', 1000], L: ['ml', 1000], unid: ['unid', 1] }
-const FORM_VACIO = { nombre: '', tipo: 'general', unidad: 'unid', precio: '', tam: '', stock: '', reorden: '' }
-const num = (v) => parseFloat(String(v).replace(',', '.'))
-
 export default function ListaCompras() {
+  const navigate = useNavigate()
+  const { state } = useLocation()
   const [base, setBase] = useState(null)
   const [est, setEst] = useState(VACIO)
   const [error, setError] = useState(false)
   const [ocupado, setOcupado] = useState(false)
-  const [aviso, setAviso] = useState('')
+  const [aviso, setAviso] = useState(state?.aviso ?? '')
   const [catalogo, setCatalogo] = useState([])
   const [buscar, setBuscar] = useState('')
   const [creando, setCreando] = useState(false)
-  const [form, setForm] = useState(FORM_VACIO)
 
   useEffect(() => {
     api.insumos().then(setCatalogo).catch(() => {})
@@ -37,14 +34,15 @@ export default function ListaCompras() {
       .catch(() => setError(true))
   }, [])
 
+  useEffect(() => {
+    if (!aviso) return
+    const t = setTimeout(() => setAviso(''), 2600)
+    return () => clearTimeout(t)
+  }, [aviso])
+
   function guardar(nuevoEst) {
     setEst(nuevoEst)
-    try { localStorage.setItem(clave(base.fecha), JSON.stringify(nuevoEst)) } catch { /* sin almacenamiento */ }
-  }
-
-  const avisar = (t) => {
-    setAviso(t)
-    setTimeout(() => setAviso(''), 2200)
+    try { localStorage.setItem(claveLista(base.fecha), JSON.stringify(nuevoEst)) } catch { /* sin almacenamiento */ }
   }
 
   // Lista efectiva: sugerida + cantidades ajustadas + extras. Es la que se exporta.
@@ -67,7 +65,7 @@ export default function ListaCompras() {
   const hayExtras = activas.some((f) => f.costo_estimado == null) // extras viejos sin precio
   const costoTotal = +activas.reduce((s, f) => s + (f.costo_estimado ?? 0), 0).toFixed(2)
   const listaExport = { fecha: base?.fecha, lineas: activas, costo_total: costoTotal, hayExtras }
-  const hechos = activas.filter((f) => est.marcados.includes(f.insumo_id)).length
+  const marcadas = activas.filter((f) => est.marcados.includes(f.insumo_id))
   const modificada = Object.keys(est.ajustes).length > 0
 
   function marcar(id) {
@@ -105,46 +103,16 @@ export default function ListaCompras() {
     setBuscar('')
   }
 
-  function abrirCrear() {
-    setForm({ ...FORM_VACIO, nombre: buscar.trim() })
-    setCreando(true)
+  function insumoCreado(creado) {
+    setCatalogo((c) => [...c, creado])
+    agregarDeCatalogo(creado)
+    api.registrarEvento('insumo_creado', { insumo_id: creado.id, en_recetas: creado.en_recetas })
+    setCreando(false)
+    setAviso('Insumo creado y agregado ✓')
   }
 
-  const receta = form.tipo === 'receta'
-  const formValido = form.nombre.trim() && num(form.precio) > 0 && num(form.tam) > 0 &&
-    (!receta || (num(form.stock) >= 0 && form.stock !== '' && num(form.reorden) > 0))
-
-  async function crearInsumo(e) {
-    e.preventDefault()
-    if (!formValido) return
-    const [unidad, factor] = UNIDADES[form.unidad]
-    setOcupado(true)
-    try {
-      const creado = await api.crearInsumo({
-        nombre: form.nombre.trim(),
-        unidad,
-        en_recetas: receta,
-        costo_unitario: num(form.precio) / factor,
-        presentacion_compra: num(form.tam) * factor,
-        ...(receta ? { stock: num(form.stock) * factor, punto_reorden: num(form.reorden) * factor } : {}),
-      })
-      setCatalogo((c) => [...c, creado])
-      agregarDeCatalogo(creado)
-      api.registrarEvento('insumo_creado', { insumo_id: creado.id, en_recetas: receta })
-      setCreando(false)
-      setBuscar('')
-      avisar('Insumo creado y agregado ✓')
-    } catch {
-      avisar('No se pudo crear el insumo')
-    } finally {
-      setOcupado(false)
-    }
-  }
-
-  const q = buscar.trim().toLowerCase()
-  const coincidencias = q ? catalogo.filter((i) => i.nombre.toLowerCase().includes(q)).slice(0, 6) : []
-  const unidadForm = form.unidad
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  // Pasa a registrar lo que realmente se compró (cantidad y precio pagado).
+  const irAComprar = () => navigate('/lista/comprar', { state: { fecha: base.fecha, lineas: marcadas } })
 
   async function pdf() {
     setOcupado(true)
@@ -152,7 +120,7 @@ export default function ListaCompras() {
       descargar(await generarPdf(listaExport), nombreArchivo(listaExport))
       api.registrarEvento('pdf')
     } catch {
-      avisar('No se pudo crear el PDF')
+      setAviso('No se pudo crear el PDF')
     } finally {
       setOcupado(false)
     }
@@ -163,7 +131,7 @@ export default function ListaCompras() {
     try {
       if (await compartir(listaExport)) api.registrarEvento('compartida')
     } catch {
-      avisar('No se pudo compartir')
+      setAviso('No se pudo compartir')
     } finally {
       setOcupado(false)
     }
@@ -172,6 +140,9 @@ export default function ListaCompras() {
   if (error) return <div className="screen"><h1>Lista de compras</h1><p className="error">No se pudo cargar la lista. Intenta de nuevo.</p></div>
   if (!base) return <div className="screen"><h1>Lista de compras</h1><p className="muted">Preparando…</p></div>
 
+  const q = buscar.trim().toLowerCase()
+  const coincidencias = q ? catalogo.filter((i) => i.nombre.toLowerCase().includes(q)).slice(0, 6) : []
+
   return (
     <>
       {aviso && <div className="toast" role="status">{aviso}</div>}
@@ -179,7 +150,7 @@ export default function ListaCompras() {
         <div className="header">
           <div>
             <h1>Lista de compras</h1>
-            <p className="muted">{activas.length ? `${hechos} de ${activas.length} comprados` : 'Nada por comprar'}</p>
+            <p className="muted">{activas.length ? `${marcadas.length} de ${activas.length} comprados` : 'Nada por comprar'}</p>
           </div>
           <Link to="/" className="link-btn">Volver</Link>
         </div>
@@ -202,6 +173,7 @@ export default function ListaCompras() {
                   <span className="row-title">{f.nombre}</span>
                   <span className="muted small">
                     {f.extra ? (f.general ? 'Uso general' : 'Producto extra') : `Quedan ${fmtCantidad(f.stock, f.unidad)}`}
+                    {f.dias_restantes != null && ` · alcanza ${fmtDias(f.dias_restantes)}`}
                     {f.costo_estimado != null && ` · ${fmtSoles(f.costo_estimado)}`}
                   </span>
                 </span>
@@ -237,7 +209,7 @@ export default function ListaCompras() {
                       <span className="muted small">{enLista(i.id) ? 'Ya está en la lista' : `Se compra de a ${fmtCantidad(i.presentacion_compra, i.unidad)}`}</span>
                     </button>
                   ))}
-                  <button type="button" className="opcion crear" onClick={abrirCrear}>
+                  <button type="button" className="opcion crear" onClick={() => setCreando(true)}>
                     <span>+ Crear «{buscar.trim()}» como insumo nuevo</span>
                   </button>
                 </div>
@@ -245,55 +217,7 @@ export default function ListaCompras() {
               {!q && <span className="muted small">Si no está, escribe el nombre y podrás crearlo.</span>}
             </div>
           ) : (
-            <form className="extra-form" onSubmit={crearInsumo}>
-              <div className="field">
-                <label htmlFor="n-nombre">Nombre</label>
-                <input id="n-nombre" className="input" value={form.nombre} onChange={set('nombre')} />
-              </div>
-              <div className="segmentos dos" role="radiogroup" aria-label="Tipo de insumo">
-                <button type="button" role="radio" aria-checked={!receta} className={!receta ? 'on' : ''} onClick={() => setForm({ ...form, tipo: 'general' })}>Uso general</button>
-                <button type="button" role="radio" aria-checked={receta} className={receta ? 'on' : ''} onClick={() => setForm({ ...form, tipo: 'receta' })}>Va en recetas</button>
-              </div>
-              <p className="nota small muted">
-                {receta
-                  ? 'Se descontará del stock cuando lo agregues a una receta. Avisará cuando esté por agotarse.'
-                  : 'Por ejemplo servilletas o bolsas. No descuenta stock ni genera alertas: solo aparece cuando lo agregas a la lista.'}
-              </p>
-              <div className="campo-par">
-                <div className="field">
-                  <label htmlFor="n-unidad">Se mide en</label>
-                  <select id="n-unidad" className="input" value={form.unidad} onChange={set('unidad')}>
-                    <option value="unid">unidades</option>
-                    <option value="kg">kilos (kg)</option>
-                    <option value="L">litros (L)</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="n-precio">Precio por {unidadForm === 'unid' ? 'unidad' : unidadForm} (S/)</label>
-                  <input id="n-precio" className="input" inputMode="decimal" value={form.precio} onChange={set('precio')} />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="n-tam">Cuánto compras normalmente ({unidadForm})</label>
-                <input id="n-tam" className="input" inputMode="decimal" placeholder={unidadForm === 'unid' ? 'Ej. 100' : 'Ej. 5'} value={form.tam} onChange={set('tam')} />
-              </div>
-              {receta && (
-                <div className="campo-par">
-                  <div className="field">
-                    <label htmlFor="n-stock">Stock actual ({unidadForm})</label>
-                    <input id="n-stock" className="input" inputMode="decimal" value={form.stock} onChange={set('stock')} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="n-reorden">Avisar cuando quede ({unidadForm})</label>
-                    <input id="n-reorden" className="input" inputMode="decimal" value={form.reorden} onChange={set('reorden')} />
-                  </div>
-                </div>
-              )}
-              <div className="actions">
-                <BotonPrimario type="button" variante="ghost" className="small" onClick={() => setCreando(false)}>Cancelar</BotonPrimario>
-                <BotonPrimario type="submit" className="small" disabled={!formValido || ocupado}>Crear y agregar</BotonPrimario>
-              </div>
-            </form>
+            <FormInsumo nombreInicial={buscar.trim()} onCreado={insumoCreado} onCancelar={() => setCreando(false)} />
           )}
         </Tarjeta>
 
@@ -302,6 +226,12 @@ export default function ListaCompras() {
             <span className="muted">Costo estimado{hayExtras ? ' (sin extras)' : ''}</span>
             <strong>{fmtSoles(costoTotal)}</strong>
           </Tarjeta>
+        )}
+
+        {marcadas.length > 0 && (
+          <BotonPrimario className="big" onClick={irAComprar}>
+            Ya compré ({marcadas.length}) · registrar compra
+          </BotonPrimario>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, fmtSoles } from '../lib/api'
 import { Tarjeta, BotonPrimario } from '../components/ui'
+import { PAGOS } from './VentasHoy'
 
 const CATEGORIAS = ['Todos', 'Menú', 'Carta', 'Bebidas']
 
@@ -11,10 +12,20 @@ export default function RegistrarVenta() {
   const [cat, setCat] = useState('Todos')
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState('')
+  const [ultima, setUltima] = useState(null) // última venta guardada, para poder deshacerla
+  const [pago, setPago] = useState('efectivo')
+  const [tipo, setTipo] = useState('mesa')
+  const [mesa, setMesa] = useState('')
 
   useEffect(() => {
     api.platos().then(setPlatos).catch(() => setAviso('No se pudieron cargar los platos'))
   }, [])
+
+  useEffect(() => {
+    if (!aviso) return
+    const t = setTimeout(() => { setAviso(''); setUltima(null) }, ultima ? 8000 : 2400)
+    return () => clearTimeout(t)
+  }, [aviso, ultima])
 
   const visibles = useMemo(
     () =>
@@ -40,20 +51,41 @@ export default function RegistrarVenta() {
     setGuardando(true)
     try {
       const items = Object.entries(cant).map(([id, cantidad]) => ({ plato_id: Number(id), cantidad }))
-      await api.guardarVenta({ items })
+      const r = await api.guardarVenta({ items, metodo_pago: pago, tipo, mesa: tipo === 'mesa' ? mesa.trim() : '' })
+      setUltima({ id: r.id, cant })
       setCant({})
+      setPago('efectivo')
+      setTipo('mesa')
+      setMesa('')
       setAviso('Venta guardada ✓')
     } catch {
+      setUltima(null)
       setAviso('No se pudo guardar. Intenta de nuevo.')
     } finally {
       setGuardando(false)
-      setTimeout(() => setAviso(''), 2200)
+    }
+  }
+
+  async function deshacer() {
+    const u = ultima
+    setUltima(null)
+    try {
+      await api.anularVenta(u.id, 'Deshecha al momento')
+      setCant(u.cant)
+      setAviso('Venta deshecha: corrígela y vuelve a guardar')
+    } catch {
+      setAviso('No se pudo deshacer')
     }
   }
 
   return (
     <>
-      {aviso && <div className="toast" role="status">{aviso}</div>}
+      {aviso && (
+        <div className="toast" role="status">
+          {aviso}
+          {ultima && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
+        </div>
+      )}
       <div className="screen" style={{ paddingBottom: 180 }}>
         <h1>Registrar venta</h1>
         <input className="input" type="search" placeholder="Buscar plato…" aria-label="Buscar plato" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -78,6 +110,21 @@ export default function RegistrarVenta() {
             </Tarjeta>
           ))}
         </div>
+        <Tarjeta className="cobro">
+          <h2>Cobro</h2>
+          <div className="segmentos" role="radiogroup" aria-label="Método de pago">
+            {Object.entries(PAGOS).map(([k, t]) => (
+              <button key={k} type="button" role="radio" aria-checked={pago === k} className={pago === k ? 'on' : ''} onClick={() => setPago(k)}>{t}</button>
+            ))}
+          </div>
+          <div className="segmentos dos" role="radiogroup" aria-label="Tipo de venta">
+            <button type="button" role="radio" aria-checked={tipo === 'mesa'} className={tipo === 'mesa' ? 'on' : ''} onClick={() => setTipo('mesa')}>En mesa</button>
+            <button type="button" role="radio" aria-checked={tipo === 'llevar'} className={tipo === 'llevar' ? 'on' : ''} onClick={() => setTipo('llevar')}>Para llevar</button>
+          </div>
+          {tipo === 'mesa' && (
+            <input className="input" inputMode="numeric" placeholder="N.º de mesa (opcional)" aria-label="Número de mesa" value={mesa} onChange={(e) => setMesa(e.target.value)} />
+          )}
+        </Tarjeta>
         {visibles.length === 0 && platos.length > 0 && <p className="empty">No hay platos con ese nombre.</p>}
       </div>
 
