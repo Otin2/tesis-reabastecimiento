@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-11-09T16:48:10.710Z",
+        "reason": "Inter is specified in the user's PLAN.md design tokens (taken from their Figma); not a choice made by Claude"
+      }
+    ]
+  }
+}

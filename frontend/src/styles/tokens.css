@@ -1,0 +1,17 @@
+:root {
+  --primary: #118B6B;
+  --primary-light: #E1F4ED;
+  --bg: #F6F7F9;
+  --surface: #FFFFFF;
+  --text: #191D26;
+  --muted: #6B7380;
+  --border: #E3E6EB;
+  --danger: #CC2929;
+  --danger-light: #FEE8E8;
+  --warning: #B86605;
+  --warning-light: #FFF2D6;
+  --radius-card: 16px;
+  --radius-btn: 14px;
+  --radius-pill: 999px;
+  font-family: Inter, system-ui, sans-serif;
+}
