@@ -37,6 +37,8 @@ export const api = {
   // tipo: 'ajuste' (cantidad = stock contado) | 'merma' | 'consumo_propio' (cantidad = lo que sale)
   ajustarStock: (a) => (DEMO ? mock.ajustarStock(a) : post(`/insumos/${a.insumo_id}/ajuste`, a)),
   registrarCompra: (c) => (DEMO ? mock.registrarCompra(c) : post('/compras', c)),
+  // Solo en demo: el backend todavía no tiene cómo deshacer una compra.
+  deshacerCompra: (id) => (DEMO ? mock.deshacerCompra(id) : Promise.reject(new Error('No disponible'))),
   listaCompras: () => (DEMO ? mock.listaCompras() : request('/lista-compras')),
   // tipo: 'generada' | 'pdf' | 'compartida' | 'marcada' | 'ajustada' | 'extra_agregada' | 'insumo_creado' | 'comprada'.
   registrarEvento: (tipo, detalle = {}) =>

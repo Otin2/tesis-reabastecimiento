@@ -51,6 +51,8 @@ const compras = [
   { insumo_id: 1, cantidad: 8000, costo_total: 96, fecha: hace(3) },
   { insumo_id: 9, cantidad: 6000, costo_total: 180, fecha: hace(1) },
 ]
+let sigCompra = 1
+const comprasDeshacibles = new Map() // id de compra -> lo necesario para deshacerla
 
 const item = (plato_id, cantidad) => {
   const p = platos.find((x) => x.id === plato_id)
@@ -162,6 +164,7 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 // Gastos de ejemplo. Los fijos se pagan cada mes: en un periodo cuenta la parte que le toca (días/30).
 // Los de "solo esta vez" cuentan completos en el periodo actual.
 let sigGasto = 100
+let ultimoQuitado = null // último gasto quitado y su posición, para Deshacer
 let gastos = [
   { id: 1, nombre: 'Luz', categoria: 'servicios', monto: 180, fijo: true },
   { id: 2, nombre: 'Agua', categoria: 'servicios', monto: 90, fijo: true },
@@ -465,12 +468,39 @@ export const mock = {
   },
   async registrarCompra({ lineas }) {
     await pausa(300)
+    const previos = [] // para poder deshacerla: costo anterior, cantidad sumada y registros creados
+    const registros = []
     lineas.forEach((l) => {
       const i = insumoPorId(l.insumo_id)
       if (!i) return
+      previos.push({ insumo_id: i.id, costo_unitario: i.costo_unitario, sumado: i.stock != null ? l.cantidad : 0 })
       if (i.stock != null) i.stock += l.cantidad
       i.costo_unitario = l.costo_total / l.cantidad // último precio pagado
-      compras.push({ insumo_id: l.insumo_id, cantidad: l.cantidad, costo_total: l.costo_total, fecha: new Date().toISOString() })
+      const r = { insumo_id: l.insumo_id, cantidad: l.cantidad, costo_total: l.costo_total, fecha: new Date().toISOString() }
+      compras.push(r)
+      registros.push(r)
+    })
+    const id = sigCompra++
+    comprasDeshacibles.set(id, { previos, registros })
+    return { ok: true, id }
+  },
+  // Deshace una compra recién guardada (solo una vez): saca lo sumado al stock,
+  // devuelve el costo anterior y borra los registros (cuentan para "por vencer").
+  async deshacerCompra(id) {
+    await pausa(200)
+    const c = comprasDeshacibles.get(id)
+    if (!c) throw new Error('Esa compra ya no se puede deshacer')
+    comprasDeshacibles.delete(id)
+    // Al revés, por si un insumo vino dos veces: queda el costo de antes de la compra.
+    ;[...c.previos].reverse().forEach((p) => {
+      const i = insumoPorId(p.insumo_id)
+      if (!i) return
+      if (i.stock != null) i.stock = Math.max(0, i.stock - p.sumado)
+      i.costo_unitario = p.costo_unitario
+    })
+    c.registros.forEach((r) => {
+      const k = compras.indexOf(r)
+      if (k >= 0) compras.splice(k, 1)
     })
     return { ok: true }
   },
@@ -514,7 +544,15 @@ export const mock = {
   },
   async crearGasto(d) {
     await pausa(150)
-    gastos.push({ id: sigGasto++, nombre: d.nombre, categoria: d.categoria, monto: d.monto, fijo: d.fijo })
+    const nuevo = { id: sigGasto++, nombre: d.nombre, categoria: d.categoria, monto: d.monto, fijo: d.fijo }
+    // Si es el gasto que se acaba de quitar (Deshacer), vuelve a su lugar y con su id.
+    const q = ultimoQuitado
+    ultimoQuitado = null
+    if (q && ['nombre', 'categoria', 'monto', 'fijo'].every((k) => q.gasto[k] === d[k])) {
+      gastos.splice(Math.min(q.pos, gastos.length), 0, { ...q.gasto })
+    } else {
+      gastos.push(nuevo)
+    }
     return { ok: true }
   },
   async actualizarGasto(d) {
@@ -524,6 +562,8 @@ export const mock = {
   },
   async quitarGasto(id) {
     await pausa(100)
+    const pos = gastos.findIndex((g) => g.id === id)
+    ultimoQuitado = pos >= 0 ? { gasto: gastos[pos], pos } : null
     gastos = gastos.filter((g) => g.id !== id)
     return { ok: true }
   },

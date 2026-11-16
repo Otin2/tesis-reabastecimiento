@@ -9,9 +9,11 @@ export default function Inicio() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
+  const cargar = () => {
+    setError(false)
     api.resumen().then(setData).catch(() => setError(true))
-  }, [])
+  }
+  useEffect(cargar, [])
 
   const alertas = data?.por_agotarse ?? []
   const porVencer = data?.por_vencer ?? []
@@ -26,7 +28,12 @@ export default function Inicio() {
         <Link to="/ajustes" className="icon-btn" aria-label="Ajustes">{Icons.ajustes}</Link>
       </div>
 
-      {error && <p className="error">No se pudo cargar el resumen. Intenta de nuevo.</p>}
+      {error && (
+        <>
+          <p className="error">No se pudo cargar el resumen.</p>
+          <BotonPrimario variante="ghost" className="small" style={{ alignSelf: 'flex-start' }} onClick={cargar}>Reintentar</BotonPrimario>
+        </>
+      )}
 
       <div className="stats">
         <Link to="/ventas" className="card stat-link">

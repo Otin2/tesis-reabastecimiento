@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { api, fmtSoles, num, vistaUnidad } from '../lib/api'
+import { DEMO } from '../lib/supabase'
 import { claveLista } from './ListaCompras'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 
@@ -36,7 +37,7 @@ export default function RegistrarCompra() {
     setOcupado(true)
     setError('')
     try {
-      await api.registrarCompra({
+      const r = await api.registrarCompra({
         lineas: filas.map((f) => ({
           insumo_id: f.insumo_id,
           cantidad: num(f.cant) * vistaUnidad(f.unidad).factor,
@@ -45,17 +46,25 @@ export default function RegistrarCompra() {
       })
       api.registrarEvento('comprada', { n_insumos: filas.length, total })
 
-      // Lo comprado sale de la lista de hoy.
+      // Lo comprado sale de la lista de hoy. Se guarda lo que se sacó por si se deshace la compra.
       const ids = filas.map((f) => f.id)
+      let quitados = { marcados: ids, extras: [], ajustes: {} }
       try {
         const g = JSON.parse(localStorage.getItem(claveLista(state.fecha)) || '{}')
+        quitados = {
+          marcados: (g.marcados ?? []).filter((m) => ids.includes(m)),
+          extras: (g.extras ?? []).filter((e) => ids.includes(e.insumo_id)),
+          ajustes: Object.fromEntries(Object.entries(g.ajustes ?? {}).filter(([k]) => ids.includes(Number(k)))),
+        }
         g.marcados = (g.marcados ?? []).filter((m) => !ids.includes(m))
         g.extras = (g.extras ?? []).filter((e) => !ids.includes(e.insumo_id))
         g.ajustes = Object.fromEntries(Object.entries(g.ajustes ?? {}).filter(([k]) => !ids.includes(Number(k))))
         localStorage.setItem(claveLista(state.fecha), JSON.stringify(g))
       } catch { /* sin almacenamiento */ }
 
-      navigate('/lista', { replace: true, state: { aviso: 'Compra registrada ✓ Stock actualizado' } })
+      // Deshacer solo existe en el demo: el backend todavía no tiene cómo anular una compra.
+      const deshacer = DEMO && r?.id != null ? { id: r.id, fecha: state.fecha, quitados } : null
+      navigate('/lista', { replace: true, state: { aviso: 'Compra guardada ✓', deshacer } })
     } catch {
       setError('No se pudo guardar la compra. Intenta de nuevo.')
       setOcupado(false)
