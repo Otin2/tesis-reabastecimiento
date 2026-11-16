@@ -568,15 +568,15 @@ export const mock = {
     return { ok: true }
   },
 
-  async confirmarAccion(id) {
+  async confirmarAccion(id, opciones = {}) {
     await pausa(300)
     const a = acciones.get(id)
     if (!a) return { ok: false, mensaje: 'Esa acción ya no está disponible.' }
     acciones.delete(id)
     const { tipo, payload } = a
     if (tipo === 'venta') {
-      const r = await mock.guardarVenta({ items: payload.items })
-      return { ok: true, mensaje: `Venta registrada ✓ Total S/ ${r.total.toFixed(2)}.` }
+      const r = await mock.guardarVenta({ items: payload.items, metodo_pago: opciones.metodo_pago, tipo: opciones.tipo })
+      return { ok: true, venta_id: r.id, mensaje: `Venta registrada ✓ Total S/ ${r.total.toFixed(2)}.` }
     }
     if (tipo === 'compra') {
       await mock.registrarCompra({ lineas: payload.lineas })

@@ -192,7 +192,7 @@ Todas las rutas (salvo `/api/health`) llevan `Authorization: Bearer <token de Su
 | `GET /api/ganancias?periodo=` | `semana\|semana_pasada\|semana_antepasada\|mes` | `{platos:[{id,nombre,precio,costo,ganancia,margen_pct,vendidos,ventas_total,ganancia_total,receta:[{insumo_id,insumo,cantidad,unidad,precio_unitario,costo}]}], resumen:{etiqueta,previo,dias,barras_titulo,ventas,costo,ganancia,margen_pct,costos:[{id,grupo,nombre,monto}],barras:[{etiqueta,ganancia}],anterior:{ventas,neta}}}` |
 | `GET/POST /api/gastos` · `PUT/DELETE /api/gastos/{id}` | `{nombre,categoria:'alquiler'\|'servicios'\|'sueldos'\|'otros',monto,fijo}` | `[{id,nombre,categoria,monto,fijo}]` / `{ok}` |
 | `POST /api/chat` | `{texto}` | `{respuesta,funcion_usada,accion?:{id,tipo,resumen}}` |
-| `POST /api/chat/acciones/{id}/confirmar` | — | `{ok,mensaje}` (aquí recién se escribe en la base) |
+| `POST /api/chat/acciones/{id}/confirmar` | `{metodo_pago?,tipo?}` (solo ventas; se eligen en la tarjeta del chat) | `{ok,mensaje,venta_id?}` (aquí recién se escribe en la base; `venta_id` permite "Deshacer" con `/ventas/{id}/anular`). **Pendiente en la base:** `confirmar_accion` hoy no recibe pago/tipo ni devuelve `venta_id`. |
 | `POST /api/chat/acciones/{id}/cancelar` | — | `{ok}` |
 
 Notas:

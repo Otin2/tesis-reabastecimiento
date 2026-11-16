@@ -54,7 +54,8 @@ export const api = {
   quitarGasto: (id) => (DEMO ? mock.quitarGasto(id) : request(`/gastos/${id}`, { method: 'DELETE' })),
   // El agente propone una acción (accion = { id, tipo, resumen }); solo se ejecuta al confirmarla.
   chat: (texto) => (DEMO ? mock.chat(texto) : post('/chat', { texto })),
-  confirmarAccion: (id) => (DEMO ? mock.confirmarAccion(id) : post(`/chat/acciones/${id}/confirmar`, {})),
+  // opciones (solo ventas): { metodo_pago, tipo }. Si fue una venta, la respuesta trae venta_id para poder deshacerla.
+  confirmarAccion: (id, opciones = {}) => (DEMO ? mock.confirmarAccion(id, opciones) : post(`/chat/acciones/${id}/confirmar`, opciones)),
   cancelarAccion: (id) => (DEMO ? mock.cancelarAccion(id) : post(`/chat/acciones/${id}/cancelar`, {})),
 }
 

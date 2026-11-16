@@ -316,6 +316,8 @@ button.pill.chip { min-height: 44px; display: inline-flex; align-items: center; 
 /* Tarjeta de confirmación dentro del chat */
 .accion { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--primary-light); display: flex; flex-direction: column; align-items: flex-start; }
 .accion-resumen { font-weight: 600; color: var(--text); }
+.accion-opciones { align-self: stretch; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.accion-estado { display: flex; align-items: center; gap: 12px; margin-top: 10px; min-height: 44px; }
 .accion .actions { align-self: stretch; }
 .bubble.bot { max-width: 88%; }
 .costo-fila.total { justify-content: space-between; }
