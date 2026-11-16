@@ -25,7 +25,7 @@ export default function Login() {
   return (
     <form className="screen login" onSubmit={enviar}>
       <div className="logo">{Icons.logo}</div>
-      <h1>Bienvenida</h1>
+      <h1>Te damos la bienvenida</h1>
       <p className="muted">Ingresa para registrar ventas y ver qué insumos comprar.</p>
       {demo && <div className="demo-note">Modo demo: puedes entrar con cualquier correo y contraseña.</div>}
       <div className="field">

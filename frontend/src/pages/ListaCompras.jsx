@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api, fmtCantidad, fmtDias, fmtSoles } from '../lib/api'
 import { compartir, descargar, generarPdf, nombreArchivo } from '../lib/lista'
-import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
+import { Tarjeta, Pill, BotonPrimario, Volver } from '../components/ui'
 import FormInsumo from '../components/FormInsumo'
 
 export const claveLista = (fecha) => `lista-compras-${fecha}`
@@ -191,7 +191,7 @@ export default function ListaCompras() {
   return (
     <>
       {aviso && (
-        <div className="toast" role="status">
+        <div className="toast sobre-barra" role="status">
           {aviso}
           {ultima && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
         </div>
@@ -202,11 +202,11 @@ export default function ListaCompras() {
             <h1>Lista de compras</h1>
             <p className="muted">{activas.length ? `${marcadas.length} de ${activas.length} comprados` : 'Nada por comprar'}</p>
           </div>
-          <Link to="/" className="link-btn">Volver</Link>
+          <Volver to="/" />
         </div>
 
         {modificada && (
-          <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => guardar({ ...est, ajustes: {} })}>
+          <button className="link-btn" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => guardar({ ...est, ajustes: {} })}>
             Volver a las cantidades sugeridas
           </button>
         )}

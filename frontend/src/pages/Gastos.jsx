@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, fmtSoles, num } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 const CATEGORIAS = [
   ['alquiler', 'Alquiler'],
@@ -133,7 +132,7 @@ export default function Gastos() {
           <h1>Gastos</h1>
           <p className="muted">Lo que pagas además de los insumos</p>
         </div>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
       <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

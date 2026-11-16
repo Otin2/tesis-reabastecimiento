@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 
 export const Tarjeta = ({ className = '', children, ...p }) => (
   <div className={`card ${className}`} {...p}>{children}</div>
@@ -12,6 +12,14 @@ export const Pill = ({ nivel, texto }) => (
 export const BotonPrimario = ({ variante = '', className = '', children, ...p }) => (
   <button className={`btn ${variante} ${className}`} {...p}>{children}</button>
 )
+
+// Enlace con aspecto de botón: un solo elemento interactivo (no un botón dentro de un enlace).
+export const BotonEnlace = ({ to, variante = '', className = '', children, ...p }) => (
+  <Link to={to} className={`btn ${variante} ${className}`} {...p}>{children}</Link>
+)
+
+// "Volver" igual en todas las pantallas.
+export const Volver = ({ to }) => <Link to={to} className="link-btn volver">Volver</Link>
 
 export const Burbuja = ({ rol, children }) => <div className={`bubble ${rol}`}>{children}</div>
 
@@ -27,6 +35,7 @@ export const Icons = {
   mas: icon(<><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></>),
   menu: icon(<><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z" /></>),
   insumos: icon(<><path d="M21 8l-9-5-9 5v8l9 5 9-5z" /><path d="M3 8l9 5 9-5" /><path d="M12 13v8" /></>),
+  lista: icon(<><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 13l2 2 4-4" /></>),
   ventas: icon(<><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z" /><path d="M9 8h6" /><path d="M9 12h6" /></>),
   gastos: icon(<><circle cx="12" cy="12" r="9" /><path d="M14.5 9a2.5 2.5 0 00-2.5-1.5c-1.4 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2A2.5 2.5 0 019.5 15" /><path d="M12 6v1.5M12 16.5V18" /></>),
   enviar: icon(<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></>),
@@ -34,7 +43,7 @@ export const Icons = {
 }
 
 // "Más" queda resaltada en todas las pantallas que cuelgan de ella.
-const RUTAS_MAS = ['/mas', '/menu', '/insumos', '/ventas', '/gastos', '/ajustes']
+const RUTAS_MAS = ['/mas', '/lista', '/menu', '/insumos', '/ventas', '/gastos', '/ajustes']
 
 export function BottomNav() {
   const { pathname } = useLocation()

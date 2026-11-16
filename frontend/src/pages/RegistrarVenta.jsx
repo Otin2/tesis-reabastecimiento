@@ -81,7 +81,7 @@ export default function RegistrarVenta() {
   return (
     <>
       {aviso && (
-        <div className="toast" role="status">
+        <div className="toast sobre-barra" role="status">
           {aviso}
           {ultima && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
         </div>

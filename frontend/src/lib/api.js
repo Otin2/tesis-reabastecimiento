@@ -69,7 +69,13 @@ export function fmtCantidad(valor, unidad) {
 export const vistaUnidad = (u) =>
   u === 'g' ? { sufijo: 'kg', factor: 1000 } : u === 'ml' ? { sufijo: 'L', factor: 1000 } : { sufijo: 'unid', factor: 1 }
 
-export const fmtSoles = (n) => `S/ ${Number(n).toFixed(2)}`
+// "S/ 1,829.75" (separador de miles con coma, decimales con punto). No depende del idioma del navegador.
+export function fmtSoles(n) {
+  const v = Number(n)
+  const [entero, dec] = Math.abs(v).toFixed(2).split('.')
+  const signo = v < 0 && Number(`${entero}.${dec}`) !== 0 ? '-' : ''
+  return `${signo}S/ ${entero.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${dec}`
+}
 
 export function fmtDias(d) {
   if (d == null) return ''

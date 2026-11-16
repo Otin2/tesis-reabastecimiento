@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api, fmtSoles, num } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 const CATEGORIAS = ['Menú', 'Carta', 'Bebidas']
 
@@ -85,7 +85,7 @@ export default function MenuEditor() {
       <div className="screen" style={{ paddingBottom: 190 }}>
         <div className="header">
           <h1>{nuevo ? 'Nuevo plato' : 'Editar plato'}</h1>
-          <Link to="/menu" className="link-btn">Volver</Link>
+          <Volver to="/menu" />
         </div>
 
         <Tarjeta style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

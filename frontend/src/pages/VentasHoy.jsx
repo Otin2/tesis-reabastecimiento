@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, fmtSoles } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 export const PAGOS = { efectivo: 'Efectivo', yape_plin: 'Yape / Plin', tarjeta: 'Tarjeta' }
 
@@ -53,7 +52,7 @@ export default function VentasHoy() {
           <h1>Ventas de hoy</h1>
           <p className="muted">{activas.length} ventas · {fmtSoles(total)}</p>
         </div>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
       <Tarjeta>
@@ -86,10 +85,10 @@ export default function VentasHoy() {
           ) : confirmar === v.id ? (
             <div className="actions">
               <BotonPrimario variante="ghost" className="small" onClick={() => setConfirmar(null)}>Cancelar</BotonPrimario>
-              <BotonPrimario className="small" style={{ background: 'var(--danger)' }} onClick={() => anular(v.id)}>Sí, anular</BotonPrimario>
+              <BotonPrimario variante="danger" className="small" onClick={() => anular(v.id)}>Sí, anular</BotonPrimario>
             </div>
           ) : (
-            <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setConfirmar(v.id)}>Anular venta</button>
+            <button className="link-btn" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => setConfirmar(v.id)}>Anular venta</button>
           )}
         </Tarjeta>
       ))}

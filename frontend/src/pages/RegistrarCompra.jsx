@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { api, fmtSoles, num, vistaUnidad } from '../lib/api'
 import { DEMO } from '../lib/supabase'
 import { claveLista } from './ListaCompras'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 // "Ya compré": confirma cuánto se compró de verdad y cuánto se pagó.
 // Sube el stock y actualiza el costo con el último precio pagado.
@@ -79,7 +79,7 @@ export default function RegistrarCompra() {
             <h1>Registrar compra</h1>
             <p className="muted">Pon lo que compraste de verdad y lo que pagaste.</p>
           </div>
-          <button className="link-btn" onClick={() => navigate('/lista')}>Volver</button>
+          <Volver to="/lista" />
         </div>
 
         {filas.map((f) => {
@@ -111,7 +111,7 @@ export default function RegistrarCompra() {
         </div>
         <BotonPrimario disabled={!validas || ocupado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar compra'}</BotonPrimario>
       </div>
-      {error && <div className="toast" role="alert">{error}</div>}
+      {error && <div className="toast sobre-barra" role="alert">{error}</div>}
     </>
   )
 }

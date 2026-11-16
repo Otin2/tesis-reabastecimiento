@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Icons } from '../components/ui'
 
 const ENLACES = [
+  ['/lista', Icons.lista, 'Lista de compras', 'Qué comprar según tu stock y registrar lo comprado'],
   ['/ventas', Icons.ventas, 'Ventas de hoy', 'Ver, anular y cierre de caja'],
   ['/gastos', Icons.gastos, 'Gastos', 'Servicios, sueldos y alquiler para la ganancia neta'],
   ['/menu', Icons.menu, 'Menú y recetas', 'Crear platos, editar recetas y activar los del día'],

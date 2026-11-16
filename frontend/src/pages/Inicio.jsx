@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, fmtCantidad, fmtDias, fmtSoles } from '../lib/api'
 import { useAjustes } from '../lib/ajustes'
-import { Tarjeta, Pill, BotonPrimario, Icons } from '../components/ui'
+import { Tarjeta, Pill, BotonPrimario, BotonEnlace, Icons } from '../components/ui'
 
 export default function Inicio() {
   const { ajustes } = useAjustes()
@@ -41,16 +41,14 @@ export default function Inicio() {
           <div className="stat-num">{data ? data.platos : '–'}</div>
           <span className="muted small">{data ? `${fmtSoles(data.total)} · ver ventas ›` : ' '}</span>
         </Link>
-        <Tarjeta>
+        <Link to="/lista" className="card stat-link">
           <span className="muted small">Insumos por agotarse</span>
           <div className="stat-num danger">{data ? alertas.length : '–'}</div>
-          <span className="muted small">revisar stock</span>
-        </Tarjeta>
+          <span className="muted small">ver la lista ›</span>
+        </Link>
       </div>
 
-      <Link to="/vender" style={{ textDecoration: 'none' }}>
-        <BotonPrimario className="big" tabIndex={-1}>Registrar venta</BotonPrimario>
-      </Link>
+      <BotonEnlace to="/vender" className="big">Registrar venta</BotonEnlace>
 
       <Tarjeta>
         <h2 style={{ marginBottom: 6 }}>{ajustes.alertas ? 'Alertas de stock' : 'Compras'}</h2>
@@ -68,9 +66,7 @@ export default function Inicio() {
           </div>
         ))}
         {alertas.length > 0 && (
-          <Link to="/lista" style={{ textDecoration: 'none' }}>
-            <BotonPrimario variante="secondary" style={{ marginTop: 8 }} tabIndex={-1}>Generar lista de compras</BotonPrimario>
-          </Link>
+          <BotonEnlace to="/lista" variante="secondary" style={{ marginTop: 8 }}>Generar lista de compras</BotonEnlace>
         )}
       </Tarjeta>
 

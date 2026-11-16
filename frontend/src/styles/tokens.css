@@ -15,6 +15,7 @@
   --danger-solid: #CC2929;      /* fondo de botones destructivos rellenos */
   --on-danger: #FFFFFF;
   --toast-action: #4FD1A8;      /* acción del toast: el toast es oscuro en tema claro */
+  --cat-alquiler: #D6457F;      /* categoría Alquiler en la barra de costos (no es un error) */
   --radius-card: 16px;
   --radius-btn: 14px;
   --radius-pill: 999px;
@@ -39,6 +40,7 @@
   --danger-solid: #FF7B7B;
   --on-danger: #0F1318;
   --toast-action: #0B6B50;      /* el toast es claro en tema oscuro */
+  --cat-alquiler: #F28BB5;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -58,6 +60,7 @@
     --danger-solid: #FF7B7B;
     --on-danger: #0F1318;
     --toast-action: #0B6B50;
+    --cat-alquiler: #F28BB5;
     color-scheme: dark;
   }
 }

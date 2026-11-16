@@ -8,7 +8,7 @@ const COLOR = {
   Insumos: 'var(--warning)',
   Servicios: '#5B8DEF',
   Sueldos: '#A07CE8',
-  Alquiler: 'var(--danger)',
+  Alquiler: 'var(--cat-alquiler)',
   Otros: 'var(--muted)',
 }
 const PERIODOS = [
@@ -147,9 +147,9 @@ export default function Ganancias() {
           </span>
         )}
         {sinRestar.length > 0 && (
-          <span className="muted small">
-            No es tu ganancia real: faltan gastos por restar.{' '}
-            <button className="link-btn" style={{ textDecoration: 'underline' }} onClick={() => setApagados([])}>Restar todo</button>
+          <span className="muted small" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            No es tu ganancia real: faltan gastos por restar.
+            <button className="link-btn" style={{ textDecoration: 'underline', marginLeft: -8 }} onClick={() => setApagados([])}>Restar todo</button>
           </span>
         )}
 
@@ -163,7 +163,7 @@ export default function Ganancias() {
 
       <div className="header" style={{ alignItems: 'center' }}>
         <h2>¿Qué restas?</h2>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginRight: -8 }}>
           <button className="link-btn" onClick={() => setApagados([])}>Todo</button>
           <button className="link-btn" onClick={() => setApagados(costos.map((c) => c.id))}>Nada</button>
         </div>
@@ -214,7 +214,7 @@ export default function Ganancias() {
       <div className="header" style={{ alignItems: 'center' }}>
         <h2>Por plato</h2>
       </div>
-      <div className="segmentos" role="radiogroup" aria-label="Ordenar platos">
+      <div className="segmentos compacto" role="radiogroup" aria-label="Ordenar platos">
         {ORDENES.map(([k, t]) => (
           <button key={k} role="radio" aria-checked={orden === k} className={orden === k ? 'on' : ''} onClick={() => setOrden(k)}>{t}</button>
         ))}
