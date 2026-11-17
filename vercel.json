@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+    },
+    "api": {
+      "root": ".",
+      "framework": "fastapi",
+      "entrypoint": "api.index:app",
+      "functions": {
+        "api/index.py": {
+          "excludeFiles": "{frontend/**,tests/**,supabase/**,.venv/**,.pytest_cache/**}"
+        }
+      }
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}

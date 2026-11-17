@@ -1,0 +1,3 @@
+# Dependencias para desarrollo local: las de producción más las de pruebas.
+-r requirements.txt
+pytest>=8,<9

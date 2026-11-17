@@ -46,3 +46,16 @@ def rpc(funcion: str, params: dict):
         if e.code == "P0001":
             raise ErrorNegocio(e.message) from e
         raise
+
+
+def insertar(usuario, tabla: str, fila: dict):
+    """Inserta una fila con el restaurante del usuario (pisa cualquier restaurante_id recibido)."""
+    return cliente().table(tabla).insert({**fila, "restaurante_id": usuario.restaurante_id}).execute().data
+
+
+def hoy_lima():
+    """Fecha de hoy en Lima (las vistas cortan los días en esa zona horaria)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    return datetime.now(ZoneInfo("America/Lima")).date()

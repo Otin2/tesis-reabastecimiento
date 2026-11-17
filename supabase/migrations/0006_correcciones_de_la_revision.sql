@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 0006_correcciones_de_la_revision.sql
--- PENDIENTE DE APLICAR en "Tesis_Reabastecimiento".
+-- Aplicado en "Tesis_Reabastecimiento" el 16-nov-2026 (ensayado antes en una transacción que se deshizo).
 --
 -- Corrige lo que encontró la revisión del 16-nov-2026:
 --  1) consumo_diario_insumo   sale del libro de movimientos (lo que realmente se descontó),

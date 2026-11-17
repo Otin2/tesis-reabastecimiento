@@ -92,7 +92,8 @@ export default function Ganancias() {
 
   const { resumen, platos } = data
   const costos = resumen.costos ?? []
-  const max = Math.max(...resumen.barras.map((d) => d.ganancia))
+  // Sin ventas (todo en 0) o con días en pérdida, la barra queda en su alto mínimo en vez de NaN o negativa.
+  const max = Math.max(0, ...resumen.barras.map((d) => d.ganancia)) || 1
 
   const activos = costos.filter((c) => !apagados.includes(c.id))
   const restado = activos.reduce((s, c) => s + c.monto, 0)
@@ -203,7 +204,7 @@ export default function Ganancias() {
         <div className="bars" role="img" aria-label="Ganancia bruta por tramo del periodo">
           {resumen.barras.map((d) => (
             <div className="bar" key={d.etiqueta} title={fmtSoles(d.ganancia)}>
-              <i style={{ height: `${(d.ganancia / max) * 100}%` }} />
+              <i style={{ height: `${(Math.max(0, d.ganancia) / max) * 100}%` }} />
               <span>{d.etiqueta}</span>
             </div>
           ))}

@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.db import ConfigError, ErrorNegocio
-from api.rutas import ventas
+from api.rutas import ganancias, gastos, insumos, lista, menu, ventas
 
 load_dotenv()
 
@@ -27,4 +27,5 @@ def health():
     return {"ok": True}
 
 
-app.include_router(ventas.router)
+for modulo in (ventas, insumos, menu, gastos, ganancias, lista):
+    app.include_router(modulo.router)

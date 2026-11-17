@@ -1,4 +1,4 @@
--- Prueba de las funciones para el backend (migraciones 0004, 0005 y 0006).
+-- Prueba de las funciones para el backend (migraciones 0004 a 0007).
 -- Igual que prueba_esquema.sql: al final lanza una excepción a propósito, así TODO lo que
 -- inserta se deshace (no deja datos). El resultado aparece en el mensaje "RESULTADOS: {...}".
 -- Ejecutar en el SQL Editor de Supabase o con execute_sql (como service role / postgres).
@@ -16,6 +16,7 @@
 --   08_receta_insumo_ajeno error
 --   09_gastos_lista 2, 09_monto_mes_tras_editar 200.00, 09_gastos_lista_tras_quitar 1, 09_quitar_desde_otro error
 --   10_usuario_llama_rpc       bloqueada
+--   11_sin_punto_de_aviso      {nivel_sal null, sal_en_lista 0, sal_por_agotarse 0, arroz_en_lista 50000}
 
 do $$
 declare
@@ -102,8 +103,9 @@ begin
   insert into public.acciones_pendientes(restaurante_id, user_id, tipo, payload, resumen)
   values (a, u, 'merma', jsonb_build_object('insumo_id', i_carne, 'cantidad', 500, 'motivo', 'Se cayó'), 'Merma de 500 g de carne')
   returning id into acc;
-  r := r || jsonb_build_object('07_confirmar', public.confirmar_accion(a, u, acc) ->> 'mensaje',
-                               '07_carne', (select stock from public.insumos where id = i_carne));
+  r := r || jsonb_build_object('07_confirmar', public.confirmar_accion(a, u, acc) ->> 'mensaje');
+  -- En una sentencia aparte: dentro de la misma, la consulta no ve lo que la función acaba de cambiar.
+  r := r || jsonb_build_object('07_carne', (select stock from public.insumos where id = i_carne));
   begin
     perform public.confirmar_accion(a, u, acc);
     r := r || jsonb_build_object('07_confirmar_dos_veces', 'PERMITIDA (MAL)');
@@ -127,6 +129,14 @@ begin
     perform public.quitar_gasto(b, gp);
     r := r || jsonb_build_object('09_quitar_desde_otro', 'PERMITIDA (MAL)');
   exception when others then r := r || jsonb_build_object('09_quitar_desde_otro', 'error: ' || sqlerrm); end;
+
+  -- 11) Sin punto de aviso no hay nivel ni entra a la lista (0007). Arroz (aviso 15000, stock 0) sí entra.
+  perform public.crear_insumo(a, u, '{"nombre":"Sal","unidad":"g","costo_unitario":0.002,"presentacion_compra":1000}');
+  r := r || jsonb_build_object('11_sin_punto_de_aviso', jsonb_build_object(
+    'nivel_sal', (select nivel from public.insumos_resumen where restaurante_id = a and nombre = 'Sal'),
+    'sal_en_lista', (select count(*) from public.lista_compras_sugerida where restaurante_id = a and nombre = 'Sal'),
+    'sal_por_agotarse', (select count(*) from public.insumos_por_agotarse where restaurante_id = a and nombre = 'Sal'),
+    'arroz_en_lista', (select cantidad from public.lista_compras_sugerida where restaurante_id = a and nombre = 'Arroz')));
 
   -- 10) Un usuario normal no puede llamar a las funciones
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u, 'role', 'authenticated')::text, true);
