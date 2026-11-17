@@ -50,20 +50,27 @@ export default function VentasHoy() {
       <div className="header">
         <div>
           <h1>Ventas de hoy</h1>
-          <p className="muted">{activas.length} ventas · {fmtSoles(total)}</p>
         </div>
         <Volver to="/mas" />
       </div>
 
-      <Tarjeta>
-        <h2 style={{ marginBottom: 8 }}>Cierre de caja</h2>
-        {porPago.map((p) => (
-          <div className="ajuste-fila" key={p.k} style={{ padding: '6px 0' }}>
-            <span className="muted">{PAGOS[p.k]}</span>
-            <b>{fmtSoles(p.monto)}</b>
+      <section className="card hero hoy">
+        <div>
+          <div className="hoy-linea">
+            <h2>Cierre de caja</h2>
+            <span>{activas.length} {activas.length === 1 ? 'venta' : 'ventas'}</span>
           </div>
-        ))}
-      </Tarjeta>
+          <div className="hero-num">{fmtSoles(total)}</div>
+        </div>
+        <div className="hero-grid hoy-pagos">
+          {porPago.map((p) => (
+            <div key={p.k}>
+              <span className="small">{PAGOS[p.k]}</span>
+              <b>{fmtSoles(p.monto)}</b>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {ventas.length === 0 && <p className="empty">Todavía no hay ventas hoy.</p>}
 

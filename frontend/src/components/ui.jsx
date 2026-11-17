@@ -19,6 +19,18 @@ export const BotonEnlace = ({ to, variante = '', className = '', children, ...p 
 )
 
 // "Volver" igual en todas las pantallas.
+// Medidor de stock: llega hasta el doble del punto de aviso (lo que se repone); la marca es el punto de aviso.
+export const Medidor = ({ stock, punto, nivel }) => {
+  if (!(punto > 0)) return null
+  const pct = Math.min(100, Math.max(2, (stock / (punto * 2)) * 100))
+  return (
+    <div className="medidor" aria-hidden="true">
+      <i className={nivel === 'Crítico' ? 'critico' : nivel === 'Bajo' ? 'bajo' : 'ok'} style={{ width: `${pct}%` }} />
+      <b />
+    </div>
+  )
+}
+
 export const Volver = ({ to }) => <Link to={to} className="link-btn volver">Volver</Link>
 
 export const Burbuja = ({ rol, children }) => <div className={`bubble ${rol}`}>{children}</div>

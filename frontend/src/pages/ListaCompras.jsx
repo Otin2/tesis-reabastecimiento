@@ -200,10 +200,25 @@ export default function ListaCompras() {
         <div className="header">
           <div>
             <h1>Lista de compras</h1>
-            <p className="muted">{activas.length ? `${marcadas.length} de ${activas.length} comprados` : 'Nada por comprar'}</p>
+            {!activas.length && <p className="muted">Nada por comprar</p>}
           </div>
           <Volver to="/" />
         </div>
+
+        {activas.length > 0 && (
+          <section className="card hero hoy">
+            <div>
+              <div className="hoy-linea">
+                <span>Costo estimado{hayExtras ? ' (sin extras)' : ''}</span>
+                <span>{marcadas.length} de {activas.length} comprados</span>
+              </div>
+              <div className="hero-num">{fmtSoles(costoTotal)}</div>
+            </div>
+            <div className="avance" role="img" aria-label={`${marcadas.length} de ${activas.length} productos comprados`}>
+              <i style={{ width: `${(marcadas.length / activas.length) * 100}%` }} />
+            </div>
+          </section>
+        )}
 
         {modificada && (
           <button className="link-btn" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => guardar({ ...est, ajustes: {} })}>
@@ -271,12 +286,6 @@ export default function ListaCompras() {
           )}
         </Tarjeta>
 
-        {activas.length > 0 && (
-          <Tarjeta style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span className="muted">Costo estimado{hayExtras ? ' (sin extras)' : ''}</span>
-            <strong>{fmtSoles(costoTotal)}</strong>
-          </Tarjeta>
-        )}
 
         {marcadas.length > 0 && (
           <BotonPrimario className="big" onClick={irAComprar}>

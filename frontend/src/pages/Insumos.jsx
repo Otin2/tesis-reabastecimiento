@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { api, fmtCantidad, fmtDias, fmtSoles, num, vistaUnidad } from '../lib/api'
 import { PLANTILLA, parsearCsv } from '../lib/csv'
 import { descargar } from '../lib/lista'
-import { Tarjeta, Pill, BotonPrimario, Volver } from '../components/ui'
+import { Tarjeta, Pill, BotonPrimario, Medidor, Volver } from '../components/ui'
 import FormInsumo from '../components/FormInsumo'
 
 const MODOS = [
@@ -160,8 +160,9 @@ export default function Insumos() {
         return (
           <div key={i.id} id={`insumo-${i.id}`} className={`item ${abiertoAhora ? 'open' : ''}`}>
             <button className="item-head" aria-expanded={abiertoAhora} onClick={() => (abiertoAhora ? setAbierto(null) : abrir(i))}>
-              <div>
+              <div className="item-info">
                 <div className="row-title">{i.nombre}</div>
+                {i.en_recetas && <Medidor stock={i.stock} punto={i.punto_reorden} nivel={i.nivel} />}
                 <div className="muted small">
                   {i.en_recetas
                     ? `Quedan ${fmtCantidad(i.stock, i.unidad)}${i.dias_restantes != null ? ` · alcanza ${fmtDias(i.dias_restantes)}` : ''}`

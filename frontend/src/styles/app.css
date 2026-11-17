@@ -326,3 +326,70 @@ button.pill.chip { min-height: 44px; display: inline-flex; align-items: center; 
   *, *::before, *::after { transition: none !important; animation: none !important; }
   .typing i { opacity: .6; }
 }
+
+/* ---------- Inicio ---------- */
+/* Panel del día: usa el mismo panel verde de Ganancias (.hero) */
+.hoy { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 16px; }
+.hoy p { color: #fff; }
+.hoy-top { color: #fff; text-decoration: none; display: block; border-radius: 10px; }
+.hoy-linea { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 500; }
+.hoy .hero-num { font-size: 40px; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.horas { display: flex; align-items: flex-end; gap: 8px; height: 76px; }
+.hora { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.hora i { display: block; flex: none; width: 100%; max-width: 30px; background: #fff; border-radius: 5px 5px 2px 2px; transform-origin: bottom; animation: crecer .6s cubic-bezier(.16, 1, .3, 1) backwards; }
+.hora i.vacia { opacity: .45; border-radius: 2px; }
+.hora span { font-size: 12px; font-variant-numeric: tabular-nums; }
+@keyframes crecer { from { transform: scaleY(.15); } }
+.hoy-pagos { border-top: 1px solid rgba(255, 255, 255, .28); padding-top: 12px; }
+.hoy-pagos b { font-variant-numeric: tabular-nums; }
+.hoy-cta { background: #fff; color: var(--primary); }
+
+/* Para comprar */
+.sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 2px; }
+.stock-row { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--border); text-decoration: none; color: inherit; }
+.sec-head + .stock-row { border-top: none; }
+.stock-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.stock-row strong { color: var(--text); font-weight: 600; }
+.medidor { position: relative; height: 8px; border-radius: 999px; background: var(--border); }
+.medidor i { display: block; height: 100%; border-radius: 999px; transform-origin: left; animation: llenar .7s cubic-bezier(.16, 1, .3, 1) backwards; }
+.medidor i.critico { background: var(--danger); }
+.medidor i.bajo { background: var(--warning); }
+.medidor b { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--muted); }
+@keyframes llenar { from { transform: scaleX(.1); } }
+.reponer { border-top: 1px solid var(--border); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.reponer strong { font-variant-numeric: tabular-nums; }
+
+/* Entrada al asistente */
+.pregunta {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 6px 6px 14px; min-height: 56px;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+  color: var(--muted); text-decoration: none;
+}
+.pregunta .send { width: 44px; height: 44px; flex: none; }
+
+/* Foco visible con teclado y selección de texto con los colores de la app */
+:focus-visible { outline: 2px solid var(--primary-ink); outline-offset: 2px; }
+.hero :focus-visible { outline-color: #fff; }
+::selection { background: var(--primary); color: #fff; }
+
+/* ---------- El mismo lenguaje en las demás pantallas ---------- */
+.hoy h2 { font-size: 13px; font-weight: 500; }
+.medidor i.ok { background: var(--primary); }
+.item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.item-head .pill { flex: none; }
+
+/* Lista de compras: avance de lo comprado */
+.avance { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, .3); overflow: hidden; }
+.avance i { display: block; height: 100%; background: #fff; border-radius: 999px; transition: width .35s cubic-bezier(.16, 1, .3, 1); }
+
+/* Ganancias: verde solo si es la ganancia neta real; neutra si faltan gastos por restar */
+.neto.hero { padding: 18px 16px 16px; }
+.neto.hero .neto-num, .neto.hero .delta { color: #fff; }
+.neto.hero .barra { background: #fff; padding: 3px; height: 20px; }
+.neto.hero .barra i:first-child { border-radius: 999px 0 0 999px; }
+.neto.hero .barra i:last-child { border-radius: 0 999px 999px 0; }
+.neto.hero .barra i:only-child { border-radius: 999px; }
+.barra .resto { background: var(--primary); }
+.neto.parcial .neto-num { color: var(--text); }
+.neto-aviso { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--warning-light); color: var(--warning); }

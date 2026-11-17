@@ -137,7 +137,7 @@ export default function Ganancias() {
       <h1>Ganancias</h1>
       {chips}
 
-      <Tarjeta className="neto">
+      <Tarjeta className={`neto ${sinRestar.length === 0 && queda >= 0 ? 'hero' : 'parcial'}`}>
         <span className="muted small">{etiquetaNeto}</span>
         <div className={`neto-num ${queda < 0 ? 'neg' : ''}`}>{queda < 0 ? '−' : ''}{fmtSoles(Math.abs(queda))}</div>
         <span className="muted small">{pct.toFixed(1)} % de {fmtSoles(resumen.ventas)} vendidos</span>
@@ -147,17 +147,17 @@ export default function Ganancias() {
           </span>
         )}
         {sinRestar.length > 0 && (
-          <span className="muted small" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            No es tu ganancia real: faltan gastos por restar.
-            <button className="link-btn" style={{ textDecoration: 'underline', marginLeft: -8 }} onClick={() => setApagados([])}>Restar todo</button>
-          </span>
+          <div className="neto-aviso">
+            <span className="small">No es tu ganancia real: faltan gastos por restar.</span>
+            <BotonPrimario variante="secondary" className="small" onClick={() => setApagados([])}>Restar todo</BotonPrimario>
+          </div>
         )}
 
         <div className="barra" role="img" aria-label={`De ${fmtSoles(resumen.ventas)} vendidos, restas ${fmtSoles(restado)} y te quedan ${fmtSoles(queda)}`}>
           {segmentos.map((s) => (
             <i key={s.grupo} style={{ width: `${Math.min(100, (s.monto / resumen.ventas) * 100)}%`, background: COLOR[s.grupo] }} />
           ))}
-          <i className="resto" style={{ flex: 1, background: 'var(--primary)', opacity: queda > 0 ? 1 : 0 }} />
+          <i className="resto" style={{ flex: 1, opacity: queda > 0 ? 1 : 0 }} />
         </div>
       </Tarjeta>
 

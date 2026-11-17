@@ -135,13 +135,13 @@ export default function Gastos() {
         <Volver to="/mas" />
       </div>
 
-      <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <section className="card hero hoy">
         <div>
-          <span className="muted small">Gastos fijos al mes</span>
-          <div className="stat-num">{fmtSoles(totalMes)}</div>
+          <div className="hoy-linea"><span>Gastos fijos al mes</span></div>
+          <div className="hero-num">{fmtSoles(totalMes)}</div>
+          <p>Se reparten por día en las ganancias</p>
         </div>
-        <span className="muted small" style={{ textAlign: 'right' }}>Se reparten por día<br />en las ganancias</span>
-      </Tarjeta>
+      </section>
 
       {CATEGORIAS.map(([k, titulo]) => {
         const items = gastos.filter((g) => g.categoria === k)
