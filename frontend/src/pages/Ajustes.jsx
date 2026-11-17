@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAjustes } from '../lib/ajustes'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 const TEMAS = [['sistema', 'Sistema'], ['claro', 'Claro'], ['oscuro', 'Oscuro']]
 
@@ -24,7 +23,7 @@ export default function Ajustes() {
       {aviso && <div className="toast" role="status">{aviso}</div>}
       <div className="header">
         <h1>Ajustes</h1>
-        <Link to="/" className="link-btn">Volver</Link>
+        <Volver to="/" />
       </div>
 
       <section className="ajuste-grupo">
@@ -74,7 +73,7 @@ export default function Ajustes() {
           {confirmando ? (
             <div className="actions">
               <BotonPrimario variante="ghost" onClick={() => setConfirmando(false)}>Cancelar</BotonPrimario>
-              <BotonPrimario style={{ background: 'var(--danger)' }} onClick={borrar}>Sí, borrar</BotonPrimario>
+              <BotonPrimario variante="danger" onClick={borrar}>Sí, borrar</BotonPrimario>
             </div>
           ) : (
             <BotonPrimario variante="ghost" onClick={() => setConfirmando(true)}>Borrar datos de este dispositivo</BotonPrimario>

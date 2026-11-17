@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { api, fmtCantidad, fmtDias, fmtSoles, num, vistaUnidad, motivoDe } from '../lib/api'
 import { PLANTILLA, parsearCsv } from '../lib/csv'
 import { descargar } from '../lib/lista'
-import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
+import { Tarjeta, Pill, BotonPrimario, Medidor, Volver } from '../components/ui'
 import FormInsumo from '../components/FormInsumo'
 
 const MODOS = [
@@ -108,7 +108,7 @@ export default function Insumos() {
       {aviso && <div className="toast" role="status">{aviso}</div>}
       <div className="header">
         <h1>Insumos</h1>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
       <div className="actions" style={{ marginTop: 0 }}>
@@ -160,8 +160,9 @@ export default function Insumos() {
         return (
           <div key={i.id} id={`insumo-${i.id}`} className={`item ${abiertoAhora ? 'open' : ''}`}>
             <button className="item-head" aria-expanded={abiertoAhora} onClick={() => (abiertoAhora ? setAbierto(null) : abrir(i))}>
-              <div>
+              <div className="item-info">
                 <div className="row-title">{i.nombre}</div>
+                {i.en_recetas && <Medidor stock={i.stock} punto={i.punto_reorden} nivel={i.nivel} />}
                 <div className="muted small">
                   {i.en_recetas
                     ? `Quedan ${fmtCantidad(i.stock, i.unidad)}${i.dias_restantes != null ? ` · alcanza ${fmtDias(i.dias_restantes)}` : ''}`
@@ -188,8 +189,8 @@ export default function Insumos() {
                     </div>
                     <p className="muted small">
                       {modo === 'ajuste' && 'Cuenta lo que realmente queda y se corrige el stock.'}
-                      {modo === 'merma' && 'Lo que se malogró, se cayó o se botó. Cuenta como pérdida.'}
-                      {modo === 'consumo_propio' && 'Lo que se usó para el personal o para la casa.'}
+                      {modo === 'merma' && 'Merma: lo que se malogró, se cayó o se botó. Cuenta como pérdida.'}
+                      {modo === 'consumo_propio' && 'Uso propio: lo que consumió el personal o la casa, no se vendió.'}
                     </p>
                     <div className="field">
                       <label htmlFor={`aj-${i.id}`}>{modo === 'ajuste' ? 'Queda en total' : modo === 'merma' ? 'Se perdió' : 'Se usó'} ({v.sufijo})</label>

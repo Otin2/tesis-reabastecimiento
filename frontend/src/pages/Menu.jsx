@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api, fmtSoles, motivoDe } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonEnlace, Volver } from '../components/ui'
 
 const clase = (m) => (m >= 65 ? 'ok' : m >= 50 ? 'bajo' : 'critico')
 
@@ -46,12 +46,10 @@ export default function Menu() {
           <h1>Menú y recetas</h1>
           <p className="muted">{activos} de {platos.length} platos activos hoy</p>
         </div>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
-      <Link to="/menu/nuevo" style={{ textDecoration: 'none' }}>
-        <BotonPrimario tabIndex={-1}>+ Nuevo plato</BotonPrimario>
-      </Link>
+      <BotonEnlace to="/menu/nuevo">+ Nuevo plato</BotonEnlace>
 
       {platos.map((p) => (
         <Tarjeta key={p.id} className={`plato-fila ${p.activo ? '' : 'inactivo'}`}>

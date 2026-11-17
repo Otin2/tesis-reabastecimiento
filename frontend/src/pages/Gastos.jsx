@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api, fmtSoles, num, motivoDe } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 const CATEGORIAS = [
   ['alquiler', 'Alquiler'],
@@ -40,25 +39,30 @@ export default function Gastos() {
   const [gastos, setGastos] = useState(null)
   const [error, setError] = useState(false)
   const [aviso, setAviso] = useState('')
+  const [quitado, setQuitado] = useState(null) // último gasto quitado, para poder deshacerlo
   const [form, setForm] = useState({ nombre: '', categoria: 'servicios', monto: '', fijo: true })
   const [ocupado, setOcupado] = useState(false)
 
   const cargar = useCallback(() => api.gastos().then(setGastos).catch(() => setError(true)), [])
   useEffect(() => { cargar() }, [cargar])
+  const reintentar = () => { setError(false); cargar() }
 
   useEffect(() => {
     if (!aviso) return
-    const t = setTimeout(() => setAviso(''), 2200)
+    const t = setTimeout(() => { setAviso(''); setQuitado(null) }, quitado ? 8000 : 2200)
     return () => clearTimeout(t)
-  }, [aviso])
+  }, [aviso, quitado])
+
+  // Cualquier otro aviso reemplaza al de "Se quitó…" y ya no se puede deshacer.
+  const avisar = (texto) => { setQuitado(null); setAviso(texto) }
 
   async function guardar(g) {
     try {
       await api.actualizarGasto(g)
       await cargar()
-      setAviso('Guardado ✓')
+      avisar('Guardado ✓')
     } catch (err) {
-      setAviso(motivoDe(err, 'No se pudo guardar'))
+      avisar(motivoDe(err, 'No se pudo guardar'))
     }
   }
 
@@ -66,9 +70,22 @@ export default function Gastos() {
     try {
       await api.quitarGasto(g.id)
       await cargar()
-      setAviso(`${g.nombre} quitado`)
+      setQuitado({ nombre: g.nombre, categoria: g.categoria, monto: g.monto, fijo: g.fijo })
+      setAviso(`Se quitó ${g.nombre}`)
     } catch (err) {
-      setAviso(motivoDe(err, 'No se pudo quitar'))
+      avisar(motivoDe(err, 'No se pudo quitar'))
+    }
+  }
+
+  async function deshacer() {
+    const q = quitado
+    setQuitado(null)
+    try {
+      await api.crearGasto(q)
+      await cargar()
+      setAviso(`${q.nombre} está de vuelta ✓`)
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo deshacer'))
     }
   }
 
@@ -80,15 +97,23 @@ export default function Gastos() {
       await api.crearGasto({ nombre: form.nombre.trim(), categoria: form.categoria, monto: num(form.monto), fijo: form.fijo })
       setForm({ ...form, nombre: '', monto: '' })
       await cargar()
-      setAviso('Gasto agregado ✓')
+      avisar('Gasto agregado ✓')
     } catch (err) {
-      setAviso(motivoDe(err, 'No se pudo agregar'))
+      avisar(motivoDe(err, 'No se pudo agregar'))
     } finally {
       setOcupado(false)
     }
   }
 
-  if (error) return <div className="screen"><h1>Gastos</h1><p className="error">No se pudieron cargar los gastos.</p></div>
+  if (error) {
+    return (
+      <div className="screen">
+        <h1>Gastos</h1>
+        <p className="error">No se pudieron cargar los gastos.</p>
+        <BotonPrimario variante="ghost" className="small" style={{ alignSelf: 'flex-start' }} onClick={reintentar}>Reintentar</BotonPrimario>
+      </div>
+    )
+  }
   if (!gastos) return <div className="screen"><h1>Gastos</h1><p className="muted">Cargando…</p></div>
 
   const fijos = gastos.filter((g) => g.fijo)
@@ -96,22 +121,27 @@ export default function Gastos() {
 
   return (
     <div className="screen">
-      {aviso && <div className="toast" role="status">{aviso}</div>}
+      {aviso && (
+        <div className="toast" role="status">
+          {aviso}
+          {quitado && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
+        </div>
+      )}
       <div className="header">
         <div>
           <h1>Gastos</h1>
           <p className="muted">Lo que pagas además de los insumos</p>
         </div>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
-      <Tarjeta style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <section className="card hero hoy">
         <div>
-          <span className="muted small">Gastos fijos al mes</span>
-          <div className="stat-num">{fmtSoles(totalMes)}</div>
+          <div className="hoy-linea"><span>Gastos fijos al mes</span></div>
+          <div className="hero-num">{fmtSoles(totalMes)}</div>
+          <p>Se reparten por día en las ganancias</p>
         </div>
-        <span className="muted small" style={{ textAlign: 'right' }}>Se reparten por día<br />en las ganancias</span>
-      </Tarjeta>
+      </section>
 
       {CATEGORIAS.map(([k, titulo]) => {
         const items = gastos.filter((g) => g.categoria === k)

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api, fmtCantidad, fmtDias, fmtSoles } from '../lib/api'
 import { compartir, descargar, generarPdf, nombreArchivo } from '../lib/lista'
-import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
+import { Tarjeta, Pill, BotonPrimario, Volver } from '../components/ui'
 import FormInsumo from '../components/FormInsumo'
 
 export const claveLista = (fecha) => `lista-compras-${fecha}`
@@ -19,26 +19,63 @@ export default function ListaCompras() {
   const [error, setError] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [aviso, setAviso] = useState(state?.aviso ?? '')
+  const [ultima, setUltima] = useState(state?.deshacer ?? null) // compra recién guardada, para poder deshacerla
   const [catalogo, setCatalogo] = useState([])
   const [buscar, setBuscar] = useState('')
   const [creando, setCreando] = useState(false)
 
-  useEffect(() => {
+  const cargar = useCallback(() => {
+    setError(false)
     api.insumos().then(setCatalogo).catch(() => {})
-    api.listaCompras()
+    return api.listaCompras()
       .then((l) => {
         setBase(l)
         setEst(leer(l.fecha))
-        api.registrarEvento('generada', { n_insumos: l.lineas.length, costo_total: l.costo_total })
+        return l
       })
       .catch(() => setError(true))
   }, [])
 
+  const cargarLista = useCallback(() => {
+    cargar().then((l) => l && api.registrarEvento('generada', { n_insumos: l.lineas.length, costo_total: l.costo_total }))
+  }, [cargar])
+
+  useEffect(() => {
+    cargarLista()
+    // El aviso de la compra se usa una sola vez: si se vuelve a esta pantalla con "atrás", no reaparece.
+    if (state) navigate('/lista', { replace: true, state: null })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!aviso) return
-    const t = setTimeout(() => setAviso(''), 2600)
+    const t = setTimeout(() => { setAviso(''); setUltima(null) }, ultima ? 8000 : 2600)
     return () => clearTimeout(t)
-  }, [aviso])
+  }, [aviso, ultima])
+
+  // Cualquier otro aviso reemplaza al de la compra y ya no se puede deshacer.
+  const avisar = (texto) => { setUltima(null); setAviso(texto) }
+
+  async function deshacer() {
+    const u = ultima
+    setUltima(null)
+    try {
+      await api.deshacerCompra(u.id)
+      // Lo comprado vuelve a la lista de ese día, marcado como estaba.
+      const q = u.quitados
+      const g = leer(u.fecha)
+      const repuesto = {
+        ...g,
+        marcados: [...new Set([...g.marcados, ...q.marcados])],
+        extras: [...g.extras.filter((e) => !q.extras.some((x) => x.insumo_id === e.insumo_id)), ...q.extras],
+        ajustes: { ...q.ajustes, ...g.ajustes },
+      }
+      try { localStorage.setItem(claveLista(u.fecha), JSON.stringify(repuesto)) } catch { /* sin almacenamiento */ }
+      await cargar()
+      setAviso('Compra deshecha: los productos volvieron a la lista')
+    } catch {
+      setAviso('No se pudo deshacer')
+    }
+  }
 
   function guardar(nuevoEst) {
     setEst(nuevoEst)
@@ -108,7 +145,7 @@ export default function ListaCompras() {
     agregarDeCatalogo(creado)
     api.registrarEvento('insumo_creado', { insumo_id: creado.id, en_recetas: creado.en_recetas })
     setCreando(false)
-    setAviso('Insumo creado y agregado ✓')
+    avisar('Insumo creado y agregado ✓')
   }
 
   // Pasa a registrar lo que realmente se compró (cantidad y precio pagado).
@@ -120,7 +157,7 @@ export default function ListaCompras() {
       descargar(await generarPdf(listaExport), nombreArchivo(listaExport))
       api.registrarEvento('pdf')
     } catch {
-      setAviso('No se pudo crear el PDF')
+      avisar('No se pudo crear el PDF')
     } finally {
       setOcupado(false)
     }
@@ -131,13 +168,21 @@ export default function ListaCompras() {
     try {
       if (await compartir(listaExport)) api.registrarEvento('compartida')
     } catch {
-      setAviso('No se pudo compartir')
+      avisar('No se pudo compartir')
     } finally {
       setOcupado(false)
     }
   }
 
-  if (error) return <div className="screen"><h1>Lista de compras</h1><p className="error">No se pudo cargar la lista. Intenta de nuevo.</p></div>
+  if (error) {
+    return (
+      <div className="screen">
+        <h1>Lista de compras</h1>
+        <p className="error">No se pudo cargar la lista.</p>
+        <BotonPrimario variante="ghost" className="small" style={{ alignSelf: 'flex-start' }} onClick={cargarLista}>Reintentar</BotonPrimario>
+      </div>
+    )
+  }
   if (!base) return <div className="screen"><h1>Lista de compras</h1><p className="muted">Preparando…</p></div>
 
   const q = buscar.trim().toLowerCase()
@@ -145,18 +190,38 @@ export default function ListaCompras() {
 
   return (
     <>
-      {aviso && <div className="toast" role="status">{aviso}</div>}
+      {aviso && (
+        <div className="toast sobre-barra" role="status">
+          {aviso}
+          {ultima && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
+        </div>
+      )}
       <div className="screen" style={{ paddingBottom: 190 }}>
         <div className="header">
           <div>
             <h1>Lista de compras</h1>
-            <p className="muted">{activas.length ? `${marcadas.length} de ${activas.length} comprados` : 'Nada por comprar'}</p>
+            {!activas.length && <p className="muted">Nada por comprar</p>}
           </div>
-          <Link to="/" className="link-btn">Volver</Link>
+          <Volver to="/" />
         </div>
 
+        {activas.length > 0 && (
+          <section className="card hero hoy">
+            <div>
+              <div className="hoy-linea">
+                <span>Costo estimado{hayExtras ? ' (sin extras)' : ''}</span>
+                <span>{marcadas.length} de {activas.length} comprados</span>
+              </div>
+              <div className="hero-num">{fmtSoles(costoTotal)}</div>
+            </div>
+            <div className="avance" role="img" aria-label={`${marcadas.length} de ${activas.length} productos comprados`}>
+              <i style={{ width: `${(marcadas.length / activas.length) * 100}%` }} />
+            </div>
+          </section>
+        )}
+
         {modificada && (
-          <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => guardar({ ...est, ajustes: {} })}>
+          <button className="link-btn" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => guardar({ ...est, ajustes: {} })}>
             Volver a las cantidades sugeridas
           </button>
         )}
@@ -221,12 +286,6 @@ export default function ListaCompras() {
           )}
         </Tarjeta>
 
-        {activas.length > 0 && (
-          <Tarjeta style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span className="muted">Costo estimado{hayExtras ? ' (sin extras)' : ''}</span>
-            <strong>{fmtSoles(costoTotal)}</strong>
-          </Tarjeta>
-        )}
 
         {marcadas.length > 0 && (
           <BotonPrimario className="big" onClick={irAComprar}>

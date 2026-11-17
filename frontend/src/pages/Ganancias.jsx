@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, fmtCantidad, fmtSoles } from '../lib/api'
-import { Tarjeta } from '../components/ui'
+import { Tarjeta, BotonPrimario } from '../components/ui'
 
 const clase = (m) => (m >= 65 ? 'ok' : m >= 50 ? 'bajo' : 'critico')
 const GRUPOS = ['Insumos', 'Servicios', 'Sueldos', 'Alquiler', 'Otros']
@@ -8,7 +8,7 @@ const COLOR = {
   Insumos: 'var(--warning)',
   Servicios: '#5B8DEF',
   Sueldos: '#A07CE8',
-  Alquiler: 'var(--danger)',
+  Alquiler: 'var(--cat-alquiler)',
   Otros: 'var(--muted)',
 }
 const PERIODOS = [
@@ -17,6 +17,8 @@ const PERIODOS = [
   ['semana_antepasada', 'Antepasada'],
   ['mes', 'Este mes'],
 ]
+// Cómo se nombra cada grupo en "Ganancia de … sin restar sueldos y alquiler".
+const NOMBRE_GRUPO = { Insumos: 'insumos', Servicios: 'servicios', Sueldos: 'sueldos', Alquiler: 'alquiler', Otros: 'otros gastos' }
 const ORDENES = [
   ['margen', 'Más margen'],
   ['mas', 'Más vendidos'],
@@ -46,6 +48,9 @@ function FilaGrupo({ grupo, items, apagados, onCambiar }) {
   )
 }
 
+const porGrupoDe = (costos) =>
+  GRUPOS.map((g) => ({ grupo: g, items: costos.filter((c) => c.grupo === g) })).filter((g) => g.items.length)
+
 export default function Ganancias() {
   const [periodo, setPeriodo] = useState('semana')
   const [data, setData] = useState(null)
@@ -54,6 +59,7 @@ export default function Ganancias() {
   const [apagados, setApagados] = useState([]) // costos que NO se restan
   const [orden, setOrden] = useState('margen')
   const [error, setError] = useState(false)
+  const [intento, setIntento] = useState(0) // sube con "Reintentar" para volver a cargar
 
   useEffect(() => {
     let vigente = true
@@ -63,7 +69,7 @@ export default function Ganancias() {
       .catch(() => { if (vigente) setError(true) })
       .finally(() => { if (vigente) setCargando(false) })
     return () => { vigente = false }
-  }, [periodo])
+  }, [periodo, intento])
 
   const chips = (
     <div className="filters" role="radiogroup" aria-label="Periodo">
@@ -73,7 +79,15 @@ export default function Ganancias() {
     </div>
   )
 
-  if (error && !data) return <div className="screen"><h1>Ganancias</h1><p className="error">No se pudo cargar el reporte. Intenta de nuevo.</p></div>
+  if (error && !data) {
+    return (
+      <div className="screen">
+        <h1>Ganancias</h1>
+        <p className="error">No se pudo cargar el reporte.</p>
+        <BotonPrimario variante="ghost" className="small" style={{ alignSelf: 'flex-start' }} onClick={() => { setError(false); setIntento((n) => n + 1) }}>Reintentar</BotonPrimario>
+      </div>
+    )
+  }
   if (!data) return <div className="screen"><h1>Ganancias</h1><p className="muted">Calculando…</p></div>
 
   const { resumen, platos } = data
@@ -84,12 +98,27 @@ export default function Ganancias() {
   const restado = activos.reduce((s, c) => s + c.monto, 0)
   const queda = resumen.ventas - restado
   const pct = resumen.ventas > 0 ? (queda / resumen.ventas) * 100 : 0
-  const titulo = activos.length === costos.length ? 'Ganancia neta' : activos.length === 0 ? 'Ventas' : 'Te queda'
+  // Si falta restar algo, el número no es la ganancia neta: se dice qué no se está restando.
+  const sinRestar = costos.filter((c) => apagados.includes(c.id))
+  const gruposSinRestar = porGrupoDe(costos)
+    .map(({ grupo, items }) => {
+      const off = items.filter((c) => apagados.includes(c.id)).length
+      return off === 0 ? null : off === items.length ? NOMBRE_GRUPO[grupo] : `parte de ${NOMBRE_GRUPO[grupo]}`
+    })
+    .filter(Boolean)
+  const etiquetaNeto =
+    sinRestar.length === 0
+      ? `Ganancia neta de ${resumen.etiqueta}`
+      : activos.length === 0
+        ? `Ventas de ${resumen.etiqueta}`
+        : `Ganancia de ${resumen.etiqueta} sin restar ${
+            gruposSinRestar.length <= 2 ? gruposSinRestar.join(' y ') : `${sinRestar.length} gastos`
+          }`
 
   const previas = resumen.anterior?.ventas
   const delta = previas > 0 ? ((resumen.ventas - previas) / previas) * 100 : null
 
-  const porGrupo = GRUPOS.map((g) => ({ grupo: g, items: costos.filter((c) => c.grupo === g) })).filter((g) => g.items.length)
+  const porGrupo = porGrupoDe(costos)
   const segmentos = porGrupo
     .map(({ grupo, items }) => ({ grupo, monto: items.filter((c) => !apagados.includes(c.id)).reduce((s, c) => s + c.monto, 0) }))
     .filter((g) => g.monto > 0)
@@ -108,8 +137,8 @@ export default function Ganancias() {
       <h1>Ganancias</h1>
       {chips}
 
-      <Tarjeta className="neto">
-        <span className="muted small">{titulo} de {resumen.etiqueta}</span>
+      <Tarjeta className={`neto ${sinRestar.length === 0 && queda >= 0 ? 'hero' : 'parcial'}`}>
+        <span className="muted small">{etiquetaNeto}</span>
         <div className={`neto-num ${queda < 0 ? 'neg' : ''}`}>{queda < 0 ? '−' : ''}{fmtSoles(Math.abs(queda))}</div>
         <span className="muted small">{pct.toFixed(1)} % de {fmtSoles(resumen.ventas)} vendidos</span>
         {delta != null && (
@@ -117,18 +146,24 @@ export default function Ganancias() {
             {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(0)} % en ventas frente a {resumen.previo}
           </span>
         )}
+        {sinRestar.length > 0 && (
+          <div className="neto-aviso">
+            <span className="small">No es tu ganancia real: faltan gastos por restar.</span>
+            <BotonPrimario variante="secondary" className="small" onClick={() => setApagados([])}>Restar todo</BotonPrimario>
+          </div>
+        )}
 
         <div className="barra" role="img" aria-label={`De ${fmtSoles(resumen.ventas)} vendidos, restas ${fmtSoles(restado)} y te quedan ${fmtSoles(queda)}`}>
           {segmentos.map((s) => (
             <i key={s.grupo} style={{ width: `${Math.min(100, (s.monto / resumen.ventas) * 100)}%`, background: COLOR[s.grupo] }} />
           ))}
-          <i className="resto" style={{ flex: 1, background: 'var(--primary)', opacity: queda > 0 ? 1 : 0 }} />
+          <i className="resto" style={{ flex: 1, opacity: queda > 0 ? 1 : 0 }} />
         </div>
       </Tarjeta>
 
       <div className="header" style={{ alignItems: 'center' }}>
         <h2>¿Qué restas?</h2>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginRight: -8 }}>
           <button className="link-btn" onClick={() => setApagados([])}>Todo</button>
           <button className="link-btn" onClick={() => setApagados(costos.map((c) => c.id))}>Nada</button>
         </div>
@@ -179,7 +214,7 @@ export default function Ganancias() {
       <div className="header" style={{ alignItems: 'center' }}>
         <h2>Por plato</h2>
       </div>
-      <div className="segmentos" role="radiogroup" aria-label="Ordenar platos">
+      <div className="segmentos compacto" role="radiogroup" aria-label="Ordenar platos">
         {ORDENES.map(([k, t]) => (
           <button key={k} role="radio" aria-checked={orden === k} className={orden === k ? 'on' : ''} onClick={() => setOrden(k)}>{t}</button>
         ))}

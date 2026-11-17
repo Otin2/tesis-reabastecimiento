@@ -2,7 +2,7 @@
 
 > Documento para quien continúe el trabajo (otra persona o otra cuenta de Claude Code).
 > Léelo junto con [PLAN.md](PLAN.md): el plan dice **qué se quería construir**; este archivo dice **qué se hizo, qué cambió y qué falta**.
-> Última actualización: 16 de noviembre de 2026 (revisión del proyecto: migración `0006` con correcciones, **pendiente de aplicar** en Supabase).
+> Última actualización: 16 de noviembre de 2026 (API iniciada: health, auth, Inicio y ventas; revisión del proyecto: migración `0006` con correcciones, **pendiente de aplicar** en Supabase).
 
 ---
 
@@ -11,8 +11,9 @@
 - **Tesis:** "Diseño e implementación de un agente conversacional para la recomendación de reabastecimiento en pequeñas empresas comerciales". Caso real: el restaurante pequeño de la hermana del autor, en Lima.
 - **Hecho:** el **frontend (React + Vite) está completo**, corre en **modo demo** con datos de ejemplo y no necesita backend. El **esquema SQL ya está aplicado y probado** en un proyecto de Supabase ("Tesis_Reabastecimiento").
 - **Hecho también:** el seed de la cuenta demo (`supabase/seed_demo.sql`) y el alta automática de usuarios (migración 0003).
-- **Falta:** aplicar la migración `0006`, y todo el backend (FastAPI, motor de pronóstico, agente con Gemini); conectar el frontend, desplegar y hacer el piloto de 4 semanas.
-- **Siguiente paso recomendado:** aplicar `0006_correcciones_de_la_revision.sql`, correr las dos pruebas de `supabase/tests/` y empezar la API con `/api/health`, `auth` y `/api/platos`.
+- **API (FastAPI) iniciada:** `/api/health`, autenticación, `/api/resumen`, `/api/platos`, `/api/ventas`, `/api/ventas/hoy` y `/api/ventas/{id}/anular` (ver 5.4). Probada solo con una base falsa; falta probarla contra Supabase con un token real.
+- **Falta:** aplicar la migración `0006`; el resto de rutas de la API, el motor de pronóstico y el agente con Gemini; el segundo restaurante del seed; conectar el frontend, desplegar y hacer el piloto de 4 semanas.
+- **Siguiente paso recomendado:** aplicar `0006_correcciones_de_la_revision.sql` y correr las dos pruebas de `supabase/tests/`; poner `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `.env`, probar las rutas con un token real de la cuenta demo y seguir con insumos y compras.
 
 ---
 
@@ -132,6 +133,25 @@ Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_m
 - **Correcciones de la migración 0006 (revisión del 16-nov-2026):** `consumo_diario_insumo` sale del libro de movimientos (editar una receta ya no cambia el consumo pasado); `uso_diario_insumo` divide entre los días que el restaurante lleva vendiendo (máximo 28), así "alcanza X días" no sale inflado en las primeras semanas de una cuenta nueva; `gastos.fecha` y `notas_negocio.vigente_desde` usan la fecha de Lima; `crear_insumo` redondea una vida útil con decimales; `ajustar_stock` da error si se registra una merma o uso propio sin stock.
 - **Prueba de referencia obligatoria:** lomo saltado → costo **S/ 9.29**, ganancia **S/ 12.71**, margen **57.8 %** (carne 200 g a S/ 35/kg, papa 250 g a 3.20/kg, arroz 150 g a 4.50/kg, tomate 80 g a 4.00/kg, aceite 30 ml a 9.00/L, cebolla 80 g a 2.80/kg).
 
+### 5.4 API (FastAPI) — primera parte (15-nov-2026)
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env        # completar SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
+.venv/bin/uvicorn api.index:app --reload --port 8000   # docs en http://localhost:8000/api/docs
+.venv/bin/python -m pytest -q tests
+```
+
+- `api/index.py`: app, `/api/health` y manejo de errores (un `raise exception` de la base → 400 con el mensaje; falta de variable → 500).
+- `api/db.py`: cliente con service role creado al primer uso. **Toda lectura pasa por `leer(usuario, tabla)`, que filtra por `restaurante_id`**, porque la service role salta el RLS y las vistas devolverían todos los restaurantes. Escrituras con `rpc(funcion, params)`.
+- `api/auth.py`: dependencia `usuario_actual`. Valida el token con `GET /auth/v1/user` por HTTP (no con `cliente().auth`, para no tocar la sesión del cliente compartido) y busca `perfiles` → `restaurante_id`, `rol`. Sin token o token inválido → 401; sin perfil → 403.
+- `api/rutas/ventas.py`: `/resumen` (`por_agotarse` sale de `insumos_resumen`, que sí trae `dias_restantes`; Crítico primero), `/platos`, `POST /ventas` (`registrar_venta`), `/ventas/hoy`, `POST /ventas/{id}/anular`. Rutas `def` (no `async`) porque el cliente de Supabase bloquea.
+- `tests/test_api.py`: 16 pruebas con base falsa (401, 403, filtro por restaurante, validación del cuerpo, que el `restaurante_id` del body se ignore, error de la base → 400).
+- **Verificado:** las pruebas pasan; la API arranca y responde `/api/health`; con SQL de solo lectura se comprobó en Supabase que las columnas usadas existen y que los números llegan como números.
+- **No verificado:** ninguna ruta con token se ha llamado contra Supabase real (no hay `.env` con la service role en el equipo).
+- Ojo: los datos de `seed_demo.sql` tienen fechas fijas (cargados el 9-nov); con los días, "ventas de hoy" sale en 0 y varios insumos aparecen como vencidos.
+- Ya hay 2 filas en `perfiles` en la base (revisado el 15-nov), aunque la casilla de 8.1 seguía sin marcar; confirmar qué cuentas son.
+
 ### 5.3 Verificación hecha
 
 - `npm run build` pasa sin errores.
@@ -176,7 +196,7 @@ Todas las rutas (salvo `/api/health`) llevan `Authorization: Bearer <token de Su
 | `GET /api/ganancias?periodo=` | `semana\|semana_pasada\|semana_antepasada\|mes` | `{platos:[{id,nombre,precio,costo,ganancia,margen_pct,vendidos,ventas_total,ganancia_total,receta:[{insumo_id,insumo,cantidad,unidad,precio_unitario,costo}]}], resumen:{etiqueta,previo,dias,barras_titulo,ventas,costo,ganancia,margen_pct,costos:[{id,grupo,nombre,monto}],barras:[{etiqueta,ganancia}],anterior:{ventas,neta}}}` |
 | `GET/POST /api/gastos` · `PUT/DELETE /api/gastos/{id}` | `{nombre,categoria:'alquiler'\|'servicios'\|'sueldos'\|'otros',monto,fijo}` | `[{id,nombre,categoria,monto,fijo}]` / `{ok}` |
 | `POST /api/chat` | `{texto}` | `{respuesta,funcion_usada,accion?:{id,tipo,resumen}}` |
-| `POST /api/chat/acciones/{id}/confirmar` | — | `{ok,mensaje}` (aquí recién se escribe en la base) |
+| `POST /api/chat/acciones/{id}/confirmar` | `{metodo_pago?,tipo?}` (solo ventas; se eligen en la tarjeta del chat) | `{ok,mensaje,venta_id?}` (aquí recién se escribe en la base; `venta_id` permite "Deshacer" con `/ventas/{id}/anular`). **Pendiente en la base:** `confirmar_accion` hoy no recibe pago/tipo ni devuelve `venta_id`. |
 | `POST /api/chat/acciones/{id}/cancelar` | — | `{ok}` |
 
 Notas:
@@ -202,10 +222,12 @@ Notas:
 ### 8.2 API (FastAPI) — `api/`
 Estructura del PLAN: `index.py`, `db.py`, `auth.py` (valida JWT y obtiene `restaurante_id`), `agente/`, `motor/`.
 - [ ] Todas las rutas de la sección 7. **Escribir = llamar a las funciones de la sección 5.2; leer = consultar las vistas.** Guía: `POST /api/ventas` → `registrar_venta`; `POST /api/ventas/{id}/anular` → `anular_venta`; `POST /api/compras` → `registrar_compra`; `POST /api/insumos/{id}/ajuste` → `ajustar_stock`; `POST /api/chat/acciones/{id}/confirmar` → `confirmar_accion`; `POST /api/insumos` → `crear_insumo`; `POST /api/insumos/importar` → `importar_insumos`; `POST /api/menu` y `PUT /api/menu/{id}` → `guardar_plato`; `GET /api/menu` → `margen_por_plato` + `recetas`; `GET /api/ventas/hoy` → `ventas_hoy`; `GET /api/gastos` → `gastos_lista`; `POST /api/gastos` → `crear_gasto`; `PUT /api/gastos/{id}` → `actualizar_gasto`; `DELETE /api/gastos/{id}` → `quitar_gasto`; `GET /api/insumos` → `insumos_resumen`; `GET /api/lista-compras` → `lista_compras_sugerida`; `GET /api/resumen` → `resumen_hoy` + `insumos_por_agotarse` + `insumos_por_vencer`; `GET /api/ganancias` → `ganancia_por_dia`, `ventas_por_plato_dia`, `perdidas_por_dia`, `gastos_por_dia` (filtrando entre dos fechas).
-- [ ] Orden sugerido: `health` → `auth` → `platos`/`ventas`/`resumen` → insumos y compras → menú → gastos → ganancias → lista de compras → chat.
+- [x] `health`, `auth`, `platos`, `ventas` (registrar, hoy, anular) y `resumen` (ver 5.4; probadas con base falsa).
+- [ ] Probarlas contra Supabase con un token real de la cuenta demo.
+- [ ] Siguiente en el orden: insumos y compras → menú → gastos → ganancias → lista de compras → chat.
 - [ ] **Antes de las rutas de gastos y ganancias:** llamar a `generar_gastos_mes(restaurante, hoy)` (es idempotente) al pedir `GET /api/gastos` y `GET /api/ganancias`, para que los gastos fijos del mes existan aunque nadie los haya creado.
 - [ ] **`GET /api/ganancias`** se arma en el backend con las vistas (`ventas_por_plato_dia`, `margen_por_plato`, `ganancia_por_dia`, `perdidas_por_dia`, `gastos_por_dia`) para el periodo y el anterior. Los renglones de `costos` son: "Insumos de lo vendido" (costo de `ganancia_por_dia`), "Mermas y uso propio" (`perdidas_por_dia`) y un renglón por gasto (`gastos_por_dia`, sumado por `gasto_id` entre las dos fechas). La etiqueta y el título del periodo ("esta semana", "Por día"...) los pone el backend.
-- [ ] **Autenticación:** validar el JWT del usuario (con `supabase.auth.get_user(token)` o con las claves públicas del proyecto) y buscar `perfiles` por `user_id` con la service role para obtener `restaurante_id` y `rol`. Llamar a las funciones con `supabase.rpc('nombre', {...})`; los parámetros se llaman `p_restaurante`, `p_usuario`, etc.
+- [x] **Autenticación:** validar el JWT del usuario (con `supabase.auth.get_user(token)` o con las claves públicas del proyecto) y buscar `perfiles` por `user_id` con la service role para obtener `restaurante_id` y `rol`. Llamar a las funciones con `supabase.rpc('nombre', {...})`; los parámetros se llaman `p_restaurante`, `p_usuario`, etc.
 - [ ] **Vercel:** `frontend/vercel.json` reescribe TODAS las rutas a `index.html` (sirve para desplegar solo el frontend). Al desplegar frontend y API en el mismo proyecto hay que usar un `vercel.json` en la raíz que envíe `/api/*` a FastAPI **antes** del reemplazo a `index.html`, o `/api` dejará de funcionar.
 - [ ] Vercel: verificar en la documentación vigente cómo desplegar FastAPI junto a la SPA de Vite en un mismo proyecto (ajustar `vercel.json`). Si el chat supera los 10 s del plan Hobby, mover el backend a Render.
 
@@ -230,7 +252,7 @@ Estructura del PLAN: `index.py`, `db.py`, `auth.py` (valida JWT y obtiene `resta
 - [ ] Conectar el frontend: variables `VITE_SUPABASE_*`, probar login real y ajustar nombres de campos.
 - [ ] Probar en un celular real: PDF, compartir, instalar como app, modo claro.
 - [ ] Desplegar en Vercel (plan Hobby).
-- [ ] `.env.example` en la raíz para el backend.
+- [x] `.env.example` en la raíz para el backend.
 
 ### 8.6 Piloto (4 semanas) y tesis
 - [ ] **Línea base antes de empezar:** cómo decide hoy la dueña qué comprar, cuántas veces a la semana se le acaba algo, cuánto se malogra, cuánto tarda en armar la compra.

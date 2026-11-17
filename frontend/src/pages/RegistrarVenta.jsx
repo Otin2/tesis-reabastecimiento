@@ -52,7 +52,7 @@ export default function RegistrarVenta() {
     try {
       const items = Object.entries(cant).map(([id, cantidad]) => ({ plato_id: Number(id), cantidad }))
       const r = await api.guardarVenta({ items, metodo_pago: pago, tipo, mesa: tipo === 'mesa' ? mesa.trim() : '' })
-      setUltima({ id: r.id, cant })
+      setUltima({ id: r.id, cant, pago, tipo, mesa })
       setCant({})
       setPago('efectivo')
       setTipo('mesa')
@@ -72,6 +72,10 @@ export default function RegistrarVenta() {
     try {
       await api.anularVenta(u.id, 'Deshecha al momento')
       setCant(u.cant)
+      // Vuelve todo lo de la venta, no solo los platos: si no, una venta por Yape se volvería a guardar como efectivo.
+      setPago(u.pago)
+      setTipo(u.tipo)
+      setMesa(u.mesa)
       setAviso('Venta deshecha: corrígela y vuelve a guardar')
     } catch (err) {
       setAviso(motivoDe(err, 'No se pudo deshacer'))
@@ -81,7 +85,7 @@ export default function RegistrarVenta() {
   return (
     <>
       {aviso && (
-        <div className="toast" role="status">
+        <div className="toast sobre-barra" role="status">
           {aviso}
           {ultima && <button className="toast-btn" onClick={deshacer}>Deshacer</button>}
         </div>

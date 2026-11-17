@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { api, fmtSoles } from '../lib/api'
-import { Tarjeta, BotonPrimario } from '../components/ui'
+import { api, fmtSoles, motivoDe } from '../lib/api'
+import { Tarjeta, BotonPrimario, Volver } from '../components/ui'
 
 export const PAGOS = { efectivo: 'Efectivo', yape_plin: 'Yape / Plin', tarjeta: 'Tarjeta' }
 
@@ -30,8 +29,8 @@ export default function VentasHoy() {
       setConfirmar(null)
       await cargar()
       setAviso('Venta anulada. Los insumos volvieron al stock ✓')
-    } catch {
-      setAviso('No se pudo anular')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo anular'))
     }
   }
 
@@ -51,20 +50,27 @@ export default function VentasHoy() {
       <div className="header">
         <div>
           <h1>Ventas de hoy</h1>
-          <p className="muted">{activas.length} ventas · {fmtSoles(total)}</p>
         </div>
-        <Link to="/mas" className="link-btn">Volver</Link>
+        <Volver to="/mas" />
       </div>
 
-      <Tarjeta>
-        <h2 style={{ marginBottom: 8 }}>Cierre de caja</h2>
-        {porPago.map((p) => (
-          <div className="ajuste-fila" key={p.k} style={{ padding: '6px 0' }}>
-            <span className="muted">{PAGOS[p.k]}</span>
-            <b>{fmtSoles(p.monto)}</b>
+      <section className="card hero hoy">
+        <div>
+          <div className="hoy-linea">
+            <h2>Cierre de caja</h2>
+            <span>{activas.length} {activas.length === 1 ? 'venta' : 'ventas'}</span>
           </div>
-        ))}
-      </Tarjeta>
+          <div className="hero-num">{fmtSoles(total)}</div>
+        </div>
+        <div className="hero-grid hoy-pagos">
+          {porPago.map((p) => (
+            <div key={p.k}>
+              <span className="small">{PAGOS[p.k]}</span>
+              <b>{fmtSoles(p.monto)}</b>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {ventas.length === 0 && <p className="empty">Todavía no hay ventas hoy.</p>}
 
@@ -86,10 +92,10 @@ export default function VentasHoy() {
           ) : confirmar === v.id ? (
             <div className="actions">
               <BotonPrimario variante="ghost" className="small" onClick={() => setConfirmar(null)}>Cancelar</BotonPrimario>
-              <BotonPrimario className="small" style={{ background: 'var(--danger)' }} onClick={() => anular(v.id)}>Sí, anular</BotonPrimario>
+              <BotonPrimario variante="danger" className="small" onClick={() => anular(v.id)}>Sí, anular</BotonPrimario>
             </div>
           ) : (
-            <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setConfirmar(v.id)}>Anular venta</button>
+            <button className="link-btn" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => setConfirmar(v.id)}>Anular venta</button>
           )}
         </Tarjeta>
       ))}

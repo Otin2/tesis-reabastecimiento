@@ -21,7 +21,8 @@ async function request(path, options = {}) {
     // El backend responde { detail: "..." } (FastAPI) o { message: "..." } con el motivo en español.
     const cuerpo = await res.json().catch(() => null)
     const motivo = cuerpo?.detail ?? cuerpo?.message
-    if (typeof motivo === 'string' && motivo) throw conMotivo(motivo)
+    // Solo un 400 trae una causa pensada para la persona; un 401 o un 500 se quedan con el texto genérico.
+    if (res.status === 400 && typeof motivo === 'string' && motivo) throw conMotivo(motivo)
     throw new Error(`Error ${res.status}`)
   }
   return res.json()
@@ -48,6 +49,8 @@ export const api = {
   // tipo: 'ajuste' (cantidad = stock contado) | 'merma' | 'consumo_propio' (cantidad = lo que sale)
   ajustarStock: (a) => (DEMO ? mock.ajustarStock(a) : post(`/insumos/${a.insumo_id}/ajuste`, a)),
   registrarCompra: (c) => (DEMO ? mock.registrarCompra(c) : post('/compras', c)),
+  // Solo en demo: el backend todavía no tiene cómo deshacer una compra.
+  deshacerCompra: (id) => (DEMO ? mock.deshacerCompra(id) : Promise.reject(new Error('No disponible'))),
   listaCompras: () => (DEMO ? mock.listaCompras() : request('/lista-compras')),
   // tipo: 'generada' | 'pdf' | 'compartida' | 'marcada' | 'ajustada' | 'extra_agregada' | 'insumo_creado' | 'comprada'.
   registrarEvento: (tipo, detalle = {}) =>
@@ -63,7 +66,8 @@ export const api = {
   quitarGasto: (id) => (DEMO ? mock.quitarGasto(id) : request(`/gastos/${id}`, { method: 'DELETE' })),
   // El agente propone una acción (accion = { id, tipo, resumen }); solo se ejecuta al confirmarla.
   chat: (texto) => (DEMO ? mock.chat(texto) : post('/chat', { texto })),
-  confirmarAccion: (id) => (DEMO ? mock.confirmarAccion(id) : post(`/chat/acciones/${id}/confirmar`, {})),
+  // opciones (solo ventas): { metodo_pago, tipo }. Si fue una venta, la respuesta trae venta_id para poder deshacerla.
+  confirmarAccion: (id, opciones = {}) => (DEMO ? mock.confirmarAccion(id, opciones) : post(`/chat/acciones/${id}/confirmar`, opciones)),
   cancelarAccion: (id) => (DEMO ? mock.cancelarAccion(id) : post(`/chat/acciones/${id}/cancelar`, {})),
 }
 
@@ -78,7 +82,13 @@ export function fmtCantidad(valor, unidad) {
 export const vistaUnidad = (u) =>
   u === 'g' ? { sufijo: 'kg', factor: 1000 } : u === 'ml' ? { sufijo: 'L', factor: 1000 } : { sufijo: 'unid', factor: 1 }
 
-export const fmtSoles = (n) => `S/ ${Number(n).toFixed(2)}`
+// "S/ 1,829.75" (separador de miles con coma, decimales con punto). No depende del idioma del navegador.
+export function fmtSoles(n) {
+  const v = Number(n)
+  const [entero, dec] = Math.abs(v).toFixed(2).split('.')
+  const signo = v < 0 && Number(`${entero}.${dec}`) !== 0 ? '-' : ''
+  return `${signo}S/ ${entero.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${dec}`
+}
 
 export function fmtDias(d) {
   if (d == null) return ''
