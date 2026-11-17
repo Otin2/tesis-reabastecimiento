@@ -1,6 +1,11 @@
 import { DEMO, supabase } from './supabase'
 import { mock } from './mock'
 
+// Error con una causa que se le puede mostrar a la persona ("No hay stock de este insumo...").
+export const conMotivo = (texto) => Object.assign(new Error(texto), { motivo: texto })
+// Texto para mostrar: la causa que dio el backend o, si no la hay (sin conexión, error 500), el genérico.
+export const motivoDe = (err, generico) => err?.motivo ?? generico
+
 async function request(path, options = {}) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -12,7 +17,13 @@ async function request(path, options = {}) {
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
-  if (!res.ok) throw new Error(`Error ${res.status}`)
+  if (!res.ok) {
+    // El backend responde { detail: "..." } (FastAPI) o { message: "..." } con el motivo en español.
+    const cuerpo = await res.json().catch(() => null)
+    const motivo = cuerpo?.detail ?? cuerpo?.message
+    if (typeof motivo === 'string' && motivo) throw conMotivo(motivo)
+    throw new Error(`Error ${res.status}`)
+  }
   return res.json()
 }
 

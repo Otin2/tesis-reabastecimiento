@@ -11,7 +11,7 @@ Diseño e implementación de un agente conversacional para la recomendación de 
 
 - `frontend/`: React + Vite, app móvil. **Terminado** y funcionando en modo demo.
 - `api/`: FastAPI (motor de pronóstico y agente con Gemini). **Por hacer.**
-- `supabase/`: migraciones y seed de PostgreSQL. Hay un borrador del esquema **sin probar**.
+- `supabase/`: migraciones, seed de la cuenta demo y pruebas SQL de PostgreSQL. Esquema **aplicado y probado** (migraciones `0001`–`0005`); la `0006` está pendiente de aplicar.
 
 ## Probar el frontend
 

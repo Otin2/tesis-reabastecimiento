@@ -4,7 +4,7 @@ const fechaLarga = (iso) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // Texto plano: sirve para WhatsApp y como respaldo si el celular no puede compartir archivos.
-export function textoLista(lista) {
+function textoLista(lista) {
   const filas = lista.lineas.map((l) => `• ${l.nombre}: ${fmtCantidad(l.cantidad, l.unidad)}`)
   return [`Lista de compras – ${fechaLarga(lista.fecha)}`, '', ...filas, '', `Costo estimado${lista.hayExtras ? ' (sin extras)' : ''}: ${fmtSoles(lista.costo_total)}`].join('\n')
 }

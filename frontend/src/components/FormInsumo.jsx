@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, num } from '../lib/api'
+import { api, num, motivoDe } from '../lib/api'
 import { BotonPrimario } from './ui'
 
 // Unidad elegida en pantalla -> [unidad base, factor]. Todo se guarda en unidad base.
@@ -36,8 +36,8 @@ export default function FormInsumo({ nombreInicial = '', tipoInicial = 'general'
         ...(receta && num(form.dura) > 0 ? { vida_util_dias: Math.round(num(form.dura)) } : {}),
       })
       onCreado(creado)
-    } catch {
-      setError('No se pudo crear el insumo. Intenta de nuevo.')
+    } catch (err) {
+      setError(motivoDe(err, 'No se pudo crear el insumo. Intenta de nuevo.'))
     } finally {
       setOcupado(false)
     }

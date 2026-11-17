@@ -181,11 +181,15 @@ from (values ('Pollo',0.012),('Papa amarilla',0.0032),('Ají amarillo',0.008),('
 where i.nombre = x.n and i.restaurante_id = (select id from public.restaurantes where nombre = 'Restaurante Demo');
 
 -- ---------------------------------------------------------------------
--- Para vincular una cuenta a la demo (después de crear el usuario en
--- Supabase → Authentication → Users → Add user, con "Auto confirm"):
+-- Para vincular una cuenta a la demo:
+--  * Si el correo empieza con "demo", no hay que hacer nada: al crear el usuario en
+--    Supabase → Authentication → Users → Add user (con "Auto confirm"), la migración 0003
+--    lo pone solo en el "Restaurante Demo".
+--  * Si el correo es otro, la 0003 ya le creó un perfil con un restaurante propio y vacío.
+--    Para pasarlo a la demo se actualiza ese perfil (un insert fallaría: el perfil ya existe):
 --
---   insert into public.perfiles (user_id, restaurante_id, nombre, rol)
---   select u.id, r.id, 'Demo', 'admin'
---   from auth.users u, public.restaurantes r
---   where u.email = 'CORREO_DE_LA_CUENTA_DEMO' and r.nombre = 'Restaurante Demo';
+--   update public.perfiles p
+--      set restaurante_id = r.id
+--     from auth.users u, public.restaurantes r
+--    where p.user_id = u.id and u.email = 'CORREO_DE_LA_CUENTA_DEMO' and r.nombre = 'Restaurante Demo';
 -- ---------------------------------------------------------------------

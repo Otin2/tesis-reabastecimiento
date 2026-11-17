@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { api, fmtSoles } from '../lib/api'
+import { api, fmtSoles, motivoDe } from '../lib/api'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 
 const clase = (m) => (m >= 65 ? 'ok' : m >= 50 ? 'bajo' : 'critico')
@@ -27,9 +27,9 @@ export default function Menu() {
     setPlatos((ps) => ps.map((x) => (x.id === p.id ? { ...x, activo: !x.activo } : x)))
     try {
       await api.guardarPlato({ ...p, activo: !p.activo })
-    } catch {
+    } catch (err) {
       setPlatos(antes)
-      setAviso('No se pudo cambiar')
+      setAviso(motivoDe(err, 'No se pudo cambiar'))
     }
   }
 

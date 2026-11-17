@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, fmtSoles } from '../lib/api'
+import { api, fmtSoles, motivoDe } from '../lib/api'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 import { PAGOS } from './VentasHoy'
 
@@ -58,9 +58,9 @@ export default function RegistrarVenta() {
       setTipo('mesa')
       setMesa('')
       setAviso('Venta guardada ✓')
-    } catch {
+    } catch (err) {
       setUltima(null)
-      setAviso('No se pudo guardar. Intenta de nuevo.')
+      setAviso(motivoDe(err, 'No se pudo guardar. Intenta de nuevo.'))
     } finally {
       setGuardando(false)
     }
@@ -73,8 +73,8 @@ export default function RegistrarVenta() {
       await api.anularVenta(u.id, 'Deshecha al momento')
       setCant(u.cant)
       setAviso('Venta deshecha: corrígela y vuelve a guardar')
-    } catch {
-      setAviso('No se pudo deshacer')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo deshacer'))
     }
   }
 

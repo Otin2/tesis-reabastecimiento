@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtSoles, num } from '../lib/api'
+import { api, fmtSoles, num, motivoDe } from '../lib/api'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 
 const CATEGORIAS = [
@@ -57,8 +57,8 @@ export default function Gastos() {
       await api.actualizarGasto(g)
       await cargar()
       setAviso('Guardado ✓')
-    } catch {
-      setAviso('No se pudo guardar')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo guardar'))
     }
   }
 
@@ -67,8 +67,8 @@ export default function Gastos() {
       await api.quitarGasto(g.id)
       await cargar()
       setAviso(`${g.nombre} quitado`)
-    } catch {
-      setAviso('No se pudo quitar')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo quitar'))
     }
   }
 
@@ -81,8 +81,8 @@ export default function Gastos() {
       setForm({ ...form, nombre: '', monto: '' })
       await cargar()
       setAviso('Gasto agregado ✓')
-    } catch {
-      setAviso('No se pudo agregar')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo agregar'))
     } finally {
       setOcupado(false)
     }

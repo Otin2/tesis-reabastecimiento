@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../lib/api'
+import { api, motivoDe } from '../lib/api'
 import { Burbuja, BotonPrimario, Icons } from '../components/ui'
 
 const SUGERENCIAS = [
@@ -51,10 +51,10 @@ export default function Asistente() {
         ...m.map((x, i) => (i === indice ? { ...x, estado: confirmar && r.ok ? 'confirmada' : 'cancelada' } : x)),
         { rol: 'bot', texto: confirmar ? r.mensaje : 'Listo, no guardé nada.' },
       ])
-    } catch {
+    } catch (err) {
       setMsgs((m) => [
         ...m.map((x, i) => (i === indice ? { ...x, estado: 'pendiente' } : x)),
-        { rol: 'bot', texto: 'No pude guardarlo. Intenta de nuevo.' },
+        { rol: 'bot', texto: motivoDe(err, 'No pude guardarlo. Intenta de nuevo.') },
       ])
     }
   }

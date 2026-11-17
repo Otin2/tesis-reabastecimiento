@@ -2,7 +2,7 @@
 
 > Documento para quien continúe el trabajo (otra persona o otra cuenta de Claude Code).
 > Léelo junto con [PLAN.md](PLAN.md): el plan dice **qué se quería construir**; este archivo dice **qué se hizo, qué cambió y qué falta**.
-> Última actualización: 9 de noviembre de 2026 (base de datos aplicada y probada en Supabase).
+> Última actualización: 16 de noviembre de 2026 (revisión del proyecto: migración `0006` con correcciones, **pendiente de aplicar** en Supabase).
 
 ---
 
@@ -10,8 +10,9 @@
 
 - **Tesis:** "Diseño e implementación de un agente conversacional para la recomendación de reabastecimiento en pequeñas empresas comerciales". Caso real: el restaurante pequeño de la hermana del autor, en Lima.
 - **Hecho:** el **frontend (React + Vite) está completo**, corre en **modo demo** con datos de ejemplo y no necesita backend. El **esquema SQL ya está aplicado y probado** en un proyecto de Supabase ("Tesis_Reabastecimiento").
-- **Falta:** el **seed** de datos de ejemplo, el usuario de Supabase Auth con su perfil, y todo el backend (FastAPI, motor de pronóstico, agente con Gemini); conectar el frontend, desplegar y hacer el piloto de 4 semanas.
-- **Siguiente paso recomendado:** crear `supabase/seed.sql` (restaurante de ejemplo + un segundo restaurante para probar el aislamiento) y empezar la API con `/api/health`, `auth` y `/api/platos`.
+- **Hecho también:** el seed de la cuenta demo (`supabase/seed_demo.sql`) y el alta automática de usuarios (migración 0003).
+- **Falta:** aplicar la migración `0006`, y todo el backend (FastAPI, motor de pronóstico, agente con Gemini); conectar el frontend, desplegar y hacer el piloto de 4 semanas.
+- **Siguiente paso recomendado:** aplicar `0006_correcciones_de_la_revision.sql`, correr las dos pruebas de `supabase/tests/` y empezar la API con `/api/health`, `auth` y `/api/platos`.
 
 ---
 
@@ -57,7 +58,7 @@ Reglas:
 - Para desplegar el frontend en Vercel: importar el repositorio, **Root Directory = `frontend`**, framework Vite. `frontend/vercel.json` hace que rutas como `/ganancias` funcionen al recargar.
 - Nota para la API: la vista `gastos_por_dia` reparte un gasto mensual entre **todos** los días del mes (incluidos los futuros). Al sumar un periodo hay que filtrar entre dos fechas (`dia > inicio and dia <= fin`).
 
-**Pendiente (decisión de arquitectura):** para que la app use la base de datos hoy hay que tener una capa que lea y escriba. Opciones: (a) funciones SQL (RPC) + `supabase-js` desde el frontend, sin servidor Python, y dejar FastAPI solo para el motor y el agente con Gemini; (b) FastAPI para todo, como dice el PLAN.
+**Pendiente (decisión de arquitectura):** para que la app use la base de datos hoy hay que tener una capa que lea y escriba. Opciones: (a) funciones SQL (RPC) + `supabase-js` desde el frontend, sin servidor Python, y dejar FastAPI solo para el motor y el agente con Gemini; (b) FastAPI para todo, como dice el PLAN. **Ojo con (a):** las funciones de escritura reciben `p_restaurante` como parámetro, así que no basta con darles permiso a los usuarios (podrían escribir en otro restaurante); harían falta versiones que tomen el restaurante de `auth.uid()`.
 
 ### Decisiones de producto tomadas durante el desarrollo
 
@@ -113,7 +114,7 @@ Otros detalles: instalable como app (manifest + íconos, **sin modo sin conexió
 
 ### 5.2 Esquema SQL (aplicado y probado en Supabase)
 
-Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_mi_restaurante_a_schema_private.sql` (la función de RLS vive en el schema `private`, que la API no expone), `0003_alta_automatica_de_usuarios.sql`, `0004_funciones_y_vistas_para_la_api.sql` y `0005_completar_funciones_de_la_api.sql`. Se aplicó en el proyecto "Tesis_Reabastecimiento" y el asesor de seguridad de Supabase quedó **sin avisos**. Contenido:
+Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_mi_restaurante_a_schema_private.sql` (la función de RLS vive en el schema `private`, que la API no expone), `0003_alta_automatica_de_usuarios.sql`, `0004_funciones_y_vistas_para_la_api.sql`, `0005_completar_funciones_de_la_api.sql` y `0006_correcciones_de_la_revision.sql` (**esta última aún no está aplicada**). De la 0001 a la 0005 se aplicaron en el proyecto "Tesis_Reabastecimiento" y el asesor de seguridad de Supabase quedó **sin avisos**. Contenido:
 
 - **Tablas:** `restaurantes`, `perfiles` (rol admin/empleado), `proveedores`, `insumos` (con `en_recetas` y `vida_util_dias`), `platos`, `recetas`, `ventas` (método de pago, tipo, estado activa/anulada), `venta_detalle`, `compras` (con `vence_el`), `movimientos_inventario` (libro de movimientos), `gastos_fijos`, `gastos`, `notas_negocio`, `acciones_pendientes`, `log_chat`, `lista_compras_eventos`.
 - **Triggers:** todo movimiento actualiza el stock; una venta descuenta los insumos de su receta; una compra suma stock, actualiza `costo_unitario` y calcula `vence_el`; anular una venta crea movimientos inversos.
@@ -127,7 +128,8 @@ Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_m
   - **Vistas:** `ventas_hoy` (ventas de hoy en hora de Lima con `items` en JSON) e `insumos_por_vencer` (su `estado` ya es el texto que muestra la app: "Vence mañana").
 - **Integridad entre restaurantes (0004):** triggers `check_tenant` impiden que una receta, un detalle de venta, una compra o un movimiento mezclen datos de restaurantes distintos, aunque el backend se equivoque.
 - **Vistas nuevas (0004):** `insumos_resumen` (nivel y "alcanza X días" = stock ÷ uso diario de los últimos 28 días; los de uso general salen sin stock), `uso_diario_insumo` y `lista_compras_sugerida` (fase 1 del PLAN: punto de reorden × 2 − stock, redondeado a la presentación). Con esto la API solo lee; no calcula.
-- **Pruebas:** `supabase/tests/prueba_esquema.sql` verifica margen del lomo, descuento de stock al vender, anular, compra, vencimiento, mermas, gastos prorrateados y aislamiento entre restaurantes. Todas pasaron el 9-nov-2026. Las funciones de la migración 0004 también se probaron (como *service role*, con validaciones, doble anulación, otro restaurante, el agente confirmando una acción y que un usuario normal no pueda llamarlas); esa prueba se corrió a mano y no está guardada como archivo. No deja datos (termina con una excepción a propósito que deshace todo).
+- **Pruebas:** `supabase/tests/prueba_esquema.sql` verifica margen del lomo, descuento de stock al vender, anular, compra, vencimiento, mermas, gastos prorrateados y aislamiento entre restaurantes. Todas pasaron el 9-nov-2026. Las funciones de las migraciones 0004–0006 tienen su prueba en `supabase/tests/prueba_funciones.sql` (validaciones, doble anulación, otro restaurante, el agente confirmando una acción, gastos, y que un usuario normal no pueda llamarlas); **está escrita pero todavía no se ha corrido**: hay que ejecutarla después de aplicar la 0006. Ninguna prueba deja datos (terminan con una excepción a propósito que deshace todo).
+- **Correcciones de la migración 0006 (revisión del 16-nov-2026):** `consumo_diario_insumo` sale del libro de movimientos (editar una receta ya no cambia el consumo pasado); `uso_diario_insumo` divide entre los días que el restaurante lleva vendiendo (máximo 28), así "alcanza X días" no sale inflado en las primeras semanas de una cuenta nueva; `gastos.fecha` y `notas_negocio.vigente_desde` usan la fecha de Lima; `crear_insumo` redondea una vida útil con decimales; `ajustar_stock` da error si se registra una merma o uso propio sin stock.
 - **Prueba de referencia obligatoria:** lomo saltado → costo **S/ 9.29**, ganancia **S/ 12.71**, margen **57.8 %** (carne 200 g a S/ 35/kg, papa 250 g a 3.20/kg, arroz 150 g a 4.50/kg, tomate 80 g a 4.00/kg, aceite 30 ml a 9.00/L, cebolla 80 g a 2.80/kg).
 
 ### 5.3 Verificación hecha
@@ -140,7 +142,9 @@ Migraciones en `supabase/migrations/`: `0001_esquema_inicial.sql`, `0002_mover_m
 
 ## 6. Qué NO está verificado
 
-- El **seed** y el flujo con un usuario real de Supabase Auth (aún no existen).
+- El flujo completo con un usuario real de Supabase Auth.
+- La migración `0006` y `supabase/tests/prueba_funciones.sql`: están escritas pero no se han ejecutado en ninguna base.
+- Que el registro abierto esté apagado en Supabase (Authentication → Sign In / Providers). Si está encendido, cualquiera puede crear una cuenta, y un correo que empiece con `demo` entra como admin al Restaurante Demo.
 - **Descargar PDF y Compartir** en un celular real (el menú nativo de compartir depende del dispositivo).
 - Visualmente: Gastos, Insumos, Ventas de hoy, Lista de compras, Ya compré y Menú (la lista) no se vieron en pantalla; solo se probó su lógica.
 - **Modo claro:** se revisó poco; la mayor parte de la revisión visual fue en modo oscuro.
@@ -179,6 +183,7 @@ Notas:
 - `costos[].grupo` ∈ `Insumos | Servicios | Sueldos | Alquiler | Otros`. El renglón "Insumos de lo vendido" y "Mermas y uso propio" salen de SQL; los demás, de `gastos_por_dia` sumada en el rango.
 - Si el backend cambia un nombre de campo, hay que ajustar el frontend (los componentes leen esos nombres tal cual).
 - Todo cliente debe filtrar por el `restaurante_id` del token, nunca por uno recibido.
+- **Errores:** cuando una función de la base rechaza algo ("La venta ya está anulada", "No hay stock de este insumo para descontar"), el backend debe responder 400 con `{"detail": "<ese mensaje>"}`. El frontend muestra ese texto tal cual (`motivoDe` en `lib/api.js`); si no llega, muestra un mensaje genérico.
 
 ---
 
@@ -189,8 +194,10 @@ Notas:
 - [x] Aplicar el esquema (`0001` y `0002`) sin errores.
 - [x] Seed de la cuenta demo (`supabase/seed_demo.sql`, ya cargado en la base): 6 platos, 13 insumos, recetas, ~770 ventas en 8 semanas, compras, mermas, gastos y una nota. Varios insumos quedan bajo su punto de aviso y dos por vencer.
 - [ ] **Segundo restaurante** en el seed para probar que un usuario nunca ve datos de otro.
-- [x] Tests SQL (`supabase/tests/prueba_esquema.sql`): margen del lomo, venta, anular, compra, vencimiento, mermas, gastos, aislamiento. Falta convertirlos al seed definitivo y agregar casos del segundo restaurante.
-- [ ] Crear usuario en Supabase Auth con su fila en `perfiles`.
+- [x] Tests SQL (`supabase/tests/prueba_esquema.sql`): margen del lomo, venta, anular, compra, vencimiento, mermas, gastos, aislamiento. Falta agregar casos del segundo restaurante.
+- [ ] **Aplicar `0006_correcciones_de_la_revision.sql`** y correr `prueba_esquema.sql` y `prueba_funciones.sql`.
+- [x] Perfil de cada usuario: lo crea solo la migración 0003 al dar de alta el usuario en Supabase Auth (Add user).
+- [ ] Crear en Supabase Auth la cuenta demo y la cuenta real, y confirmar que el registro abierto está apagado.
 
 ### 8.2 API (FastAPI) — `api/`
 Estructura del PLAN: `index.py`, `db.py`, `auth.py` (valida JWT y obtiene `restaurante_id`), `agente/`, `motor/`.

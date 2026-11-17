@@ -71,7 +71,9 @@ begin
 
   -- 8) Seguridad: un usuario del restaurante A solo ve lo suyo y no puede escribir
   insert into auth.users(id,email) values (u,'test@test.local');
-  insert into public.perfiles(user_id,restaurante_id,nombre) values (u,a,'test');
+  -- El alta automática (0003) ya le creó un perfil con un restaurante propio: se pasa al restaurante A.
+  insert into public.perfiles(user_id,restaurante_id,nombre) values (u,a,'test')
+    on conflict (user_id) do update set restaurante_id = excluded.restaurante_id;
   insert into public.insumos(restaurante_id,nombre,unidad) values (b,'SoloB','g');
   perform set_config('request.jwt.claims', jsonb_build_object('sub',u,'role','authenticated')::text, true);
   set local role authenticated;

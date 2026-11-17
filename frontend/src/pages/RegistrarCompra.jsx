@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { api, fmtSoles, num, vistaUnidad } from '../lib/api'
+import { api, fmtSoles, num, vistaUnidad, motivoDe } from '../lib/api'
 import { claveLista } from './ListaCompras'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 
@@ -56,8 +56,8 @@ export default function RegistrarCompra() {
       } catch { /* sin almacenamiento */ }
 
       navigate('/lista', { replace: true, state: { aviso: 'Compra registrada ✓ Stock actualizado' } })
-    } catch {
-      setError('No se pudo guardar la compra. Intenta de nuevo.')
+    } catch (err) {
+      setError(motivoDe(err, 'No se pudo guardar la compra. Intenta de nuevo.'))
       setOcupado(false)
     }
   }

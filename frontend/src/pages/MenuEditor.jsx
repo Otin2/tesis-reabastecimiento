@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, fmtSoles, num } from '../lib/api'
+import { api, fmtSoles, num, motivoDe } from '../lib/api'
 import { Tarjeta, BotonPrimario } from '../components/ui'
 
 const CATEGORIAS = ['Menú', 'Carta', 'Bebidas']
@@ -70,8 +70,8 @@ export default function MenuEditor() {
         receta: receta.map((r) => ({ insumo_id: r.insumo_id, cantidad: num(r.cantidad) })),
       })
       navigate('/menu', { state: { aviso: nuevo ? 'Plato creado ✓' : 'Cambios guardados ✓' } })
-    } catch {
-      setError('No se pudo guardar. Intenta de nuevo.')
+    } catch (err) {
+      setError(motivoDe(err, 'No se pudo guardar. Intenta de nuevo.'))
       setOcupado(false)
     }
   }

@@ -457,6 +457,8 @@ export const mock = {
     if (tipo === 'ajuste') {
       i.stock = Math.max(0, cantidad)
     } else {
+      // Igual que ajustar_stock en la base (migración 0006): sin stock no hay nada que descontar.
+      if (i.stock <= 0) throw Object.assign(new Error('sin stock'), { motivo: 'No hay stock de este insumo para descontar' })
       const sale = Math.min(cantidad, i.stock)
       i.stock -= sale
       perdidas += sale * i.costo_unitario

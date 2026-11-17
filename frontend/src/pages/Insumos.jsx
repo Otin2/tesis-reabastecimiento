@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { api, fmtCantidad, fmtDias, fmtSoles, num, vistaUnidad } from '../lib/api'
+import { api, fmtCantidad, fmtDias, fmtSoles, num, vistaUnidad, motivoDe } from '../lib/api'
 import { PLANTILLA, parsearCsv } from '../lib/csv'
 import { descargar } from '../lib/lista'
 import { Tarjeta, Pill, BotonPrimario } from '../components/ui'
@@ -67,8 +67,8 @@ export default function Insumos() {
       await cargar()
       setAbierto(null)
       setAviso(modo === 'ajuste' ? 'Stock corregido ✓' : 'Registrado ✓ El stock bajó')
-    } catch {
-      setAviso('No se pudo guardar')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo guardar'))
     } finally {
       setOcupado(false)
     }
@@ -88,8 +88,8 @@ export default function Insumos() {
       setPanel(null)
       setCsv(null)
       setAviso(`${r.creados} insumos importados${r.omitidos ? `, ${r.omitidos} ya existían` : ''} ✓`)
-    } catch {
-      setAviso('No se pudo importar')
+    } catch (err) {
+      setAviso(motivoDe(err, 'No se pudo importar'))
     } finally {
       setOcupado(false)
     }

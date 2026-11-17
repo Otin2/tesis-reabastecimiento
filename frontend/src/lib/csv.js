@@ -11,12 +11,31 @@ export const PLANTILLA =
 
 const n = (v) => parseFloat(String(v ?? '').replace(',', '.'))
 
+// Parte una línea respetando las comillas: "Pollo, entero" o "12,5" son un solo campo.
+function partir(linea, sep) {
+  const campos = []
+  let campo = ''
+  let enComillas = false
+  for (let i = 0; i < linea.length; i++) {
+    const ch = linea[i]
+    if (enComillas) {
+      if (ch === '"' && linea[i + 1] === '"') { campo += '"'; i++ }
+      else if (ch === '"') enComillas = false
+      else campo += ch
+    } else if (ch === '"') enComillas = true
+    else if (ch === sep) { campos.push(campo); campo = '' }
+    else campo += ch
+  }
+  campos.push(campo)
+  return campos.map((x) => x.trim())
+}
+
 export function parsearCsv(texto) {
   const lineas = texto.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim())
   if (lineas.length < 2) return { filas: [], errores: ['El archivo no tiene filas de datos.'] }
 
   const sep = lineas[0].includes(';') ? ';' : ','
-  const cab = lineas[0].split(sep).map((c) => c.trim().toLowerCase())
+  const cab = partir(lineas[0], sep).map((c) => c.toLowerCase())
   const col = (nombre) => cab.indexOf(nombre)
   const idx = { nombre: col('nombre'), unidad: col('unidad'), precio: col('precio'), compra: col('compra_normal'), stock: col('stock'), reorden: col('avisar_cuando_quede'), dura: col('dura_dias') }
   const faltan = ['nombre', 'unidad', 'precio', 'compra'].filter((k) => idx[k] < 0)
@@ -25,7 +44,7 @@ export function parsearCsv(texto) {
   const filas = []
   const errores = []
   lineas.slice(1).forEach((linea, i) => {
-    const c = linea.split(sep).map((x) => x.trim())
+    const c = partir(linea, sep)
     const fila = i + 2
     const nombre = c[idx.nombre]
     const u = UNIDADES[(c[idx.unidad] ?? '').toLowerCase()]
